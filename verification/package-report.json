@@ -1,0 +1,9 @@
+{
+  "version": "0.2.0",
+  "includedFiles": 64,
+  "privacyScan": "passed",
+  "privatePathDomainAccountCredentialMatches": 0,
+  "runtime": "Node.js; run 启动花月汀.cmd or npm start",
+  "externalRuntimeDependencies": "none; Three.js vendored locally",
+  "notes": "Package contains concept game, design document, fish catalog, screenshots and source evidence. Local author QA scripts excluded."
+}

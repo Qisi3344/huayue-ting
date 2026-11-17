@@ -1,0 +1,17 @@
+{
+  "fixture": "fresh browser save seeded with 5000 coins to exercise purchase paths",
+  "checks": [
+    "all three paid rods purchased",
+    "free re-equip initial rod",
+    "boat ownership purchase and duplicate disabled",
+    "exact currency deductions",
+    "star bait purchased and consumed once",
+    "real fishing complete again",
+    "catch cannot dismiss without choosing",
+    "sell-fish path registers notebook and earnings",
+    "particle reset after catch"
+  ],
+  "fishActuallyCaught": "青苇鲦",
+  "saleLabel": "交换 +26 花月币 · 初遇另加 35",
+  "consoleErrors": []
+}

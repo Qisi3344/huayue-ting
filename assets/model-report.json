@@ -1,0 +1,23 @@
+{
+  "blend": "wolf-girl.blend",
+  "glb": "wolf-girl.glb",
+  "preview": "wolf-girl-preview.png",
+  "meshObjects": 41,
+  "materials": [
+    "Fur_Grey",
+    "Fur_Shadow",
+    "Muzzle_Cream",
+    "Inner_Ear",
+    "Cloak_Sage",
+    "Cloak_Lining",
+    "Violet_Iris",
+    "Deep_Pupil",
+    "Eye_Glint",
+    "Satchel_Tan",
+    "Brass_Button",
+    "Blush"
+  ],
+  "blenderVersion": "5.2.1 LTS",
+  "rig": "named head/tail pivots, idle keyframes in blend; no weighted skin",
+  "authorship": "original procedural blockout"
+}

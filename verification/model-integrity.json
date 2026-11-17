@@ -1,0 +1,36 @@
+{
+  "assets": [
+    {
+      "file": "CHARACTER.md",
+      "bytes": 1077,
+      "localPathMatches": 0
+    },
+    {
+      "file": "model-report.json",
+      "bytes": 534,
+      "localPathMatches": 0
+    },
+    {
+      "file": "wolf-girl-preview.png",
+      "bytes": 672044,
+      "localPathMatches": 0
+    },
+    {
+      "file": "wolf-girl.blend",
+      "bytes": 185031,
+      "localPathMatches": 0
+    },
+    {
+      "file": "wolf-girl.glb",
+      "bytes": 555708,
+      "localPathMatches": 0
+    }
+  ],
+  "glb": {
+    "nodes": 49,
+    "meshes": 46,
+    "materials": 11,
+    "triangles": 22634,
+    "externalUris": []
+  }
+}

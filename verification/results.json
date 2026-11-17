@@ -1,0 +1,28 @@
+{
+  "httpStatus": 200,
+  "webglReady": true,
+  "renderFrames": "30",
+  "fishCount": 36,
+  "uniqueFishActuallyCaught": 1,
+  "currencyAfterTravelBuyCatch": 280,
+  "caughtFish": [
+    "fish-02"
+  ],
+  "checks": [
+    "four seasons change",
+    "time changes",
+    "six map destinations",
+    "boat board/disembark",
+    "travel achievement",
+    "bait payment and stock",
+    "daily supply cannot double claim",
+    "live cast/bite/tension/reel/catch",
+    "release income and first-catch achievement",
+    "notebook records",
+    "personal note persistence on reload",
+    "winter scene",
+    "mobile notebook no horizontal overflow",
+    "ambient audio on/off"
+  ],
+  "consoleErrors": []
+}

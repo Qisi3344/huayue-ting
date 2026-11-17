@@ -1,0 +1,11 @@
+{
+  "name": "huayue-cove",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "花月汀：紫瞳小灰狼的四季钓鱼概念原型",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "check": "node --check src/main.js && node --check src/scene.js && node --check src/fish-art.js && node tools/check-data.mjs && node tools/check-navigation.mjs"
+  }
+}

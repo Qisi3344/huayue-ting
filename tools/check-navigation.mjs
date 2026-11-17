@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {createNavigation} from '../src/navigation.js';
+const nav=createNavigation();
+const initial=nav.snapshot();nav.setInput(1,0);nav.step(1);let next=nav.snapshot();assert.ok(next.x>initial.x+.2,'划桨应当让船前进');
+nav.setSailing(false);const anchored=nav.snapshot();nav.setInput(1,1);nav.step(.2);assert.equal(nav.snapshot().x,anchored.x,'停桨后不会漂走');
+nav.setSailing(true);nav.setInput(1,0);nav.setPaused(true);const paused=nav.snapshot();nav.step(.2);assert.equal(nav.snapshot().x,paused.x,'菜单暂停不移动');
+nav.setPaused(false);nav.setInput(1,0);for(let i=0;i<1500;i++)nav.step(.04);assert.ok(nav.snapshot().x<=10.5,'不会越过水域右边界');
+nav.reset();assert.equal(nav.snapshot().x,.25);assert.equal(nav.snapshot().z,1.6);assert.equal(nav.snapshot().sailing,false,'救援后回码头并停船');
+nav.setSailing(true);nav.setInput(-1,-1);for(let i=0;i<1500;i++)nav.step(.04);next=nav.snapshot();assert.ok(((next.x+7)/7.15)**2+((next.z+3)/6.7)**2>=1,'小船不穿进主岛');
+nav.setOnBoat(false);const ashore=nav.snapshot();nav.setInput(1,1);nav.setSailing(true);nav.step(.2);assert.equal(nav.snapshot().x,ashore.x,'岸钓不能驾船');
+console.log(JSON.stringify({navigationChecks:['movement','anchor','pause','water boundary','return dock','island collision','ashore movement blocked'],status:'passed'},null,2));

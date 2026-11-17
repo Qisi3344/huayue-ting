@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": 1,
+      "url": "https://github.com/ColinLeung-NiloCat/UnityURPToonLitShaderExample",
+      "title": "NiloToonURP and its Unity URP tutorial example",
+      "accessed": "2026-11-17",
+      "quotes": [
+        {
+          "text": "This repository does NOT contain the full version of NiloToonURP.",
+          "added": "2026-11-17"
+        },
+        {
+          "text": "Instead, it includes a simple, short and easy-to-read URP toon shader example for Unity2022.3LTS, which is intended for shader coding tutorial purposes.",
+          "added": "2026-11-17"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "url": "https://store.steampowered.com/api/appdetails?appids=3146520&l=english",
+      "title": "",
+      "accessed": "2026-11-17",
+      "quotes": [
+        {
+          "text": "Complete your journal, find rare fish, get loads of money, and get tons of special rewards!",
+          "added": "2026-11-17"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "url": "https://www.dredge.game",
+      "title": "",
+      "accessed": "2026-11-17",
+      "quotes": [
+        {
+          "text": "Sell your catch, upgrade your boat, and dredge the depths for long-buried secrets.",
+          "added": "2026-11-17"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "url": "https://moonglowbay.com",
+      "title": "",
+      "accessed": "2026-11-17",
+      "quotes": [
+        {
+          "text": "With your journal and rod in hand, explore the furthest reaches of the ocean, from frigid glaciers to boiling geysers, and learn to cast nets, set traps and fish through ice, documenting 151 varied aquatic species while uncovering the secrets of Moonglow Bay.",
+          "added": "2026-11-17"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "url": "https://fishingplanet.com/about",
+      "title": "",
+      "accessed": "2026-11-17",
+      "quotes": [
+        {
+          "text": "Fish with complex AI driven behavior depending on seasons, climate, time of day, water current, bottom type, water and air temperature, wind and more.",
+          "added": "2026-11-17"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "url": "https://www.stardewvalley.net",
+      "title": "",
+      "accessed": "2026-11-17",
+      "quotes": [
+        {
+          "text": "Learn to live off the land: Raise animals, go fishing, tend to crops, craft items, or do it all! The choice is yours...",
+          "added": "2026-11-17"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "url": "https://www.nintendo.com/us/store/products/animal-crossing-new-horizons-switch",
+      "title": "Animal Crossing: New Horizons official Nintendo product page",
+      "accessed": "2026-11-17",
+      "quotes": [
+        {
+          "text": "You can find different critters depending on the season and time of day.",
+          "added": "2026-11-17"
+        },
+        {
+          "text": "Blathers will accept species of bugs, fish, sea creatures, and more for the island museum.",
+          "added": "2026-11-17"
+        }
+      ]
+    }
+  ]
+}

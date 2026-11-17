@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "keyboard moves boat",
+    "stop anchors boat",
+    "stationary inputs ignored",
+    "return to dock",
+    "menus pause movement",
+    "touch-sized paddle controls move boat",
+    "laptop sailing button unobstructed at 1280x720"
+  ],
+  "keyboardDistance": 2.128,
+  "mobileDistance": 2.262
+}
