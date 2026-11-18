@@ -159,6 +159,12 @@ export async function createWorld(container,options={}) {
   navigation.setHarbor(id);
   if(!keepPosition){navigation.reset();lake.resetWake();}
   creek.visible=Boolean(otherLanding(id));
+  const key=creek.visible?'route':id==='falls'?'falls':'local';
+  options.minimap?.setArea(key,{
+   banks:creek.visible?banks:banks.slice(0,2),
+   trees:trees.filter(({g})=>g.parent!==creek||creek.visible),
+   docks:creek.visible?[dock,pier]:[dock],falls:id==='falls'
+  });
   applyEnvironment();
  }
  function setBoat(value){
@@ -195,6 +201,7 @@ export async function createWorld(container,options={}) {
  const tipWorld=new THREE.Vector3(),floatWorld=new THREE.Vector3();const clock=new THREE.Clock();let lastWorldTime=0;
  function animate(){if(disposed)return;const t=clock.getElapsedTime(),motion=reduced?0:1;const dt=Math.min(.1,t-lastWorldTime);lastWorldTime=t;const nav=navigation.step(dt);
   if(blend){const f=Math.min(1,(performance.now()-blend.start)/4000);blendFrame(f*f*(3-2*f));if(f===1){blend=null;lake.invalidate();}}
+  options.minimap?.update(onBoat?nav.x:wolfRoot.position.x,onBoat?nav.z:wolfRoot.position.z,nav.heading,onBoat);
   if(navigation.reachedDestination()) options.onArrival?.(otherLanding(location));
   frames++;zoom+=(targetZoom-zoom)*.08;camera.zoom=zoom;camera.updateProjectionMatrix();target.x+=((onBoat?nav.x-.25:location==='sakura'?landing.x:0)-target.x)*.07;target.z+=((onBoat?nav.z-1.6:0)*.7-target.z)*.07;const angle=orbit;camera.position.set(target.x+Math.sin(angle)*21,12.8,target.z+Math.cos(angle)*21);camera.lookAt(target);
   if(waypoint && nav.sailing && !nav.paused){

@@ -53,10 +53,19 @@ export function bindJoystick(start,steer){
 export function bindIdle(){
  const game=$('#game');
  let timer;
+ const held=new Set();
  function wake(){
   game.classList.remove('idle-hud');clearTimeout(timer);
-  timer=setTimeout(()=>game.classList.add('idle-hud'),4000);
+  if(!held.size)timer=setTimeout(()=>game.classList.add('idle-hud'),4000);
  }
- for(const event of ['pointermove','pointerdown','keydown','focusin','wheel'])window.addEventListener(event,wake,{passive:true});
+ function press(input){held.add(input);wake();}
+ function release(input){held.delete(input);wake();}
+ const capture={passive:true,capture:true};
+ window.addEventListener('pointerdown',e=>press(e.pointerId),capture);
+ for(const type of ['pointerup','pointercancel'])window.addEventListener(type,e=>release(e.pointerId),capture);
+ window.addEventListener('keydown',e=>press(e.code),capture);
+ window.addEventListener('keyup',e=>release(e.code),capture);
+ window.addEventListener('blur',()=>{held.clear();wake();});
+ for(const type of ['pointermove','focusin','wheel'])window.addEventListener(type,wake,capture);
  wake();
 }

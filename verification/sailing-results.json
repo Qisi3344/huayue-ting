@@ -7,6 +7,9 @@
     "menu pauses sailing",
     "return to dock",
     "gear selection",
+    "four north-up bearings and positions",
+    "cached maps and shore marker",
+    "persistent minimap during idle",
     "touch joystick drag and release",
     "casting after sailing"
   ],

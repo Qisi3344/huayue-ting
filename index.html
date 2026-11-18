@@ -10,7 +10,9 @@
  <div id="world" aria-label="三维钓鱼场景"><div id="loading">正在把小船推入水中<span>准备三维湖面与小狼…</span></div></div>
  <div class="vignette" aria-hidden="true"></div>
  <header class="topbar">
-  <div class="dial-wrap"><button id="dial" type="button" aria-label="花月盘" aria-describedby="dialHelp"><i class="sky-orb"></i><i class="dial-speck"></i><i class="weather-mark"></i></button><span id="dialReadout" role="status" hidden></span><span id="dialHelp" class="sr-only">轻点查看，长按或按下方向键进入调节</span></div>
+  <div class="dial-wrap">
+   <button id="minimap" type="button" aria-label="打开水域地图，北在上"><span id="minimapBase" aria-hidden="true"></span><span class="compass-north" aria-hidden="true">北</span><i id="minimapMarker" aria-hidden="true"></i></button>
+   <button id="dial" type="button" aria-label="花月盘" aria-describedby="dialHelp"><i class="season-symbol" aria-hidden="true"></i></button><span id="dialReadout" role="status" hidden></span><span id="dialHelp" class="sr-only">轻点查看，长按或按下方向键进入调节</span></div>
   <div class="top-actions"><button id="soundBtn" class="quiet" title="开启湖畔环境音" aria-label="开启湖畔环境音" aria-pressed="false">湖声 <span id="soundLabel">关</span></button><button id="walletBtn" class="wallet" title="仅供游戏内使用的虚拟花月币"><span class="coin" aria-hidden="true">✦</span><strong id="coins">160</strong><span>花月币</span></button></div>
  </header>
  <div id="waypoint" class="waypoint" hidden><span class="waypoint-arrow" aria-hidden="true"></span><span id="waypointName"></span><span id="waypointDistance"></span><button id="cancelWaypoint" type="button" aria-label="取消目的地追踪" title="取消追踪">×</button></div>

@@ -1,3 +1,4 @@
+import {createMinimap} from './minimap.js';
 import {advanceClock,restoreClock,weatherOf} from './almanac.js';
 import {bindDial,bindJoystick,bindIdle} from './lakeside-ui.js';
 import {SEASONS,TIMES,LOCATIONS,BAITS,RODS,FISH,ACHIEVEMENTS,eligibleFish,chooseFish} from './data.js';
@@ -23,7 +24,7 @@ function stars(n){return '★'.repeat(n);}
 function renderHUD(){
  $('#coins').textContent=state.coins;$('#bookCount').textContent=`${Object.keys(state.book).length} / ${FISH.length}`;
  $('#locationName').textContent=loc().name;$('#locationTag').textContent=loc().tag;
- const dial=$('#dial');positionOrb();dial.dataset.season=state.season;dial.dataset.time=state.time;dial.dataset.weather=weatherOf(state);
+ const dial=$('#dial');dial.dataset.season=state.season;dial.dataset.time=state.time;dial.dataset.weather=weatherOf(state);
  dial.setAttribute('aria-label','花月盘，'+describeSky());
  if(!$('#dialReadout').hidden)$('#dialReadout').textContent=describeSky();
  for(const [id,name] of [['rodInfo','鱼竿：'+RODS.find(r=>r.id===state.rod).name],['baitInfo','鱼饵：'+BAITS.find(b=>b.id===state.bait).name+' × '+state.baits[state.bait]]]){
@@ -34,12 +35,6 @@ function renderHUD(){
 function setPhase(next){phase=next;$('#game').dataset.phase=next;world?.setFishing(next);$('#reelPanel').hidden=next!=='reeling';$('#castBtn').disabled=next==='waiting'||next==='caught';const labels={idle:'抛一竿',waiting:'等鱼来',bite:'鱼上钩了 · 收线',reeling:'按住收线',caught:'把相遇记下来'};$('#castLabel').textContent=labels[next];}
 function idle(message=''){clearTimeout(waitTimer);held=false;fish=null;world?.setCatchQuality(0);setPhase('idle');$('#fishingMessage').textContent='';if(message)toast(message);}
 function busy(){if(phase!=='idle'){toast('先把这一竿好好收回来吧。');return true;}return false;}
-function positionOrb(){
- const f=state.phaseSeconds/90;
- const x=(state.time==='dawn'?8:state.time==='day'?14:state.time==='dusk'?22:12)+8*f;
- const y=(state.time==='day'||state.time==='night'?12:23)-3*Math.sin(f*Math.PI);
- $('#dial').style.setProperty('--orb-x',x+'px');$('#dial').style.setProperty('--orb-y',y+'px');
-}
 function describeSky(){return [state.season,TIMES[state.time],weatherOf(state)].join(' · ');}
 function applySky(){world?.setClimate(state.season,state.time,weatherOf(state));}
 function announceLocation(){
@@ -149,18 +144,20 @@ window.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.t
 window.addEventListener('keyup',e=>{if(e.code==='Space')held=false;if(paddleKeys.delete(e.code))updatePaddles();});
 panel.addEventListener('close',()=>{if(panel.open)return;world?.setPaused(false);updatePaddles();});
 const endStick=bindJoystick(startSailing,(x,z)=>world?.setPaddle(x,z));
+const minimap=createMinimap($('#minimapBase'),$('#minimapMarker'));
+$('#minimap').onclick=()=>openPanel('map');
 bindDial(()=>openPanel('clock'),describeSky);bindIdle();
 document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPanel(b.dataset.open));
 $('#rodInfo').onclick=()=>openPanel('rod');$('#baitInfo').onclick=()=>openPanel('bait');$('#walletBtn').onclick=()=>openPanel('shop');$('#closePanel').onclick=()=>panel.close();$('#releaseBtn').onclick=()=>settleCatch(true);$('#sellBtn').onclick=()=>settleCatch(false);$('#soundBtn').onclick=toggleAudio;$('#catchDialog').addEventListener('cancel',e=>e.preventDefault());panel.addEventListener('click',e=>{if(e.target===panel){const r=panel.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)panel.close();}});
 renderHUD();
 window.render_game_to_text=()=>JSON.stringify({coordinates:'world x east, z south; origin at lake center',ready:window.__HUAYUE__?.ready??false,phase,location:state.location,season:state.season,time:state.time,coins:state.coins,boat:state.boat,sailing,navigation:world?.getNavigation()??null,bait:{id:state.bait,count:state.baits[state.bait]},rod:state.rod,recordedFish:Object.keys(state.book),fish:fish?{id:fish.id,name:fish.name,stars:fish.stars}:null,reel:phase==='reeling'?{progress:reel,tension}:null});
 window.__HUAYUE__={getState:()=>JSON.parse(JSON.stringify(state)),getPhase:()=>phase,getNavigation:()=>world?.getNavigation(),ready:false};
-try{const {createWorld}=await import('./scene.js');world=await createWorld($('#world'),{onArrival:arrive,onBearing:showBearing});world.setLocation(state.location);world.setClimate(state.season,state.time,weatherOf(state),true);world.setBoat(state.boat);world.setFishing('idle');$('#loading')?.remove();window.__HUAYUE__.ready=true;announceLocation();
+try{const {createWorld}=await import('./scene.js');world=await createWorld($('#world'),{minimap,onArrival:arrive,onBearing:showBearing});world.setLocation(state.location);world.setClimate(state.season,state.time,weatherOf(state),true);world.setBoat(state.boat);world.setFishing('idle');$('#loading')?.remove();window.__HUAYUE__.ready=true;announceLocation();
  let previous=performance.now();
  setInterval(()=>{
   const now=performance.now(),elapsed=(now-previous)/1000;previous=now;
   if(document.hidden||panel.open||phase!=='idle')return;
-  if(advanceClock(state,elapsed)){applySky();save();}else if(!state.clockHeld)positionOrb();
+  if(advanceClock(state,elapsed)){applySky();save();}
  },250);
  function checkpointClock(){try{if(localStorage.getItem(KEY)===checkpoint)save();}catch{}}
  document.addEventListener('visibilitychange',()=>{previous=performance.now();if(document.hidden)checkpointClock();});

@@ -1,21 +1,28 @@
 [hidden]{display:none!important}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
 .topbar{pointer-events:none}.topbar button{pointer-events:auto}
-.dial-wrap{display:flex;align-items:center;gap:10px}
-#dial{position:relative;isolation:isolate;width:48px;height:48px;border-radius:50%;padding:0;touch-action:none;user-select:none;--spring:#968b80;--summer:#828e80;--autumn:#998e78;--winter:#8c9998;background:conic-gradient(from -44deg,var(--spring) 0deg 87deg,#f5f1df 87deg 90deg,var(--summer) 90deg 177deg,#f5f1df 177deg 180deg,var(--autumn) 180deg 267deg,#f5f1df 267deg 270deg,var(--winter) 270deg 357deg,#f5f1df 357deg);border:2px solid #fff8de;box-shadow:0 2px 9px #29483838}
-#dial[data-season="春"]{--spring:#f29eb2}#dial[data-season="夏"]{--summer:#76ce99}#dial[data-season="秋"]{--autumn:#e9b350}#dial[data-season="冬"]{--winter:#c2e8fc}
-#dial:before{content:"";position:absolute;inset:4px;border-radius:inherit;background:linear-gradient(#b9d6d6,#faf0cd);box-shadow:inset 0 0 0 1px #4357473d}
-#dial[data-time="dawn"]:before{background:linear-gradient(#dcbbc0,#f9e5bf)}#dial[data-time="dusk"]:before{background:linear-gradient(#c5a8ad,#f3d2a6)}#dial[data-time="night"]:before{background:linear-gradient(#526679,#83969b)}
-.sky-orb{position:absolute;top:10px;left:17px;width:12px;height:12px;border-radius:50%;background:#ffdf8c;box-shadow:0 0 6px #fff4b7}
-[data-time="dawn"] .sky-orb{left:9px;top:23px;height:7px;border-radius:12px 12px 0 0}
-[data-time="dusk"] .sky-orb{left:24px;top:24px;height:6px;border-radius:12px 12px 0 0;background:#ffb277}
-[data-time="night"] .sky-orb{top:11px;left:20px;background:transparent;box-shadow:-4px 2px 0 #fff0be}
-.dial-speck{position:absolute;bottom:9px;left:18px;width:5px;height:3px;border-radius:80% 15%;background:var(--spring);animation:drifting 7s ease-in-out infinite}
-[data-season="夏"] .dial-speck{background:#dcf490;border-radius:50%}[data-season="秋"] .dial-speck{background:#d58e4f}[data-season="冬"] .dial-speck{background:white;border-radius:50%}
-@keyframes drifting{0%,65%,100%{opacity:0;transform:translate(0,-6px)}80%{opacity:1}99%{transform:translate(6px,1px)}}
-.weather-mark{position:absolute;bottom:9px;right:10px;font:10px/1 sans-serif;color:#445e61}
-[data-weather="薄雾"] .weather-mark:after{content:'≋'}[data-weather="轻雪"] .weather-mark:after{content:'❄'}[data-weather="细雨"] .weather-mark:after{content:'╱╱'}
-#dialReadout{padding:6px 10px;border-radius:14px;background:#faf8eced;font-size:12px}
+#game{--map-size:clamp(60px,18vmin,200px);--map-top:clamp(12px,2.5vmin,28px)}
+.dial-wrap{position:absolute;z-index:4;top:var(--map-top);left:clamp(14px,3vmin,42px);width:var(--map-size);height:var(--map-size)}
+.top-actions{margin-left:auto}
+#minimap{position:absolute;inset:0;border:2px solid #fbf8deba;border-radius:50%;overflow:hidden;padding:0;background:#84aaa0;box-shadow:0 1px 7px #344e473d;isolation:isolate}
+#minimapBase,#minimapBase canvas{display:block;position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#minimap:after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px #334f5152,inset 0 0 8px #45635d3d;pointer-events:none}
+.compass-north{position:absolute;top:2%;left:50%;transform:translateX(-50%);color:#fffbe7;font:bold clamp(9px,1.35vmin,14px)/1.3 "Microsoft YaHei UI",sans-serif;text-shadow:0 1px 3px #314846;pointer-events:none}
+#minimapMarker{position:absolute;left:50%;top:50%;width:clamp(11px,1.8vmin,19px);aspect-ratio:4/5;filter:drop-shadow(0 1px 1px #223e44);pointer-events:none}
+#minimapMarker:before,#minimapMarker:after{content:"";position:absolute;inset:0;background:#294e58;clip-path:polygon(50% 0,99% 100%,50% 80%,1% 100%)}
+#minimapMarker:after{inset:12% 12% 14%;background:#fff7c8}
+#minimapMarker.ashore:before,#minimapMarker.ashore:after{clip-path:circle(39%)}
+#dial{position:absolute;right:-3px;bottom:-3px;display:grid;place-items:center;width:clamp(30px,4.2vmin,42px);aspect-ratio:1;border-radius:50%;border:2px solid #fff6db;background:#f8eddb;color:#945b6b;box-shadow:0 1px 5px #243b394d;padding:0;touch-action:none;user-select:none}
+#dial:after{content:"";position:absolute;inset:-7px;border-radius:50%}
+.season-symbol{font:normal clamp(17px,2.6vmin,26px)/1 "Segoe UI Symbol",serif}
+[data-season="春"] .season-symbol:before{content:"✿"}
+#dial[data-season="夏"]{background:#e0edd6;color:#43775b}[data-season="夏"] .season-symbol:before{content:"☘"}
+#dial[data-season="秋"]{background:#faebd0;color:#9a602f}[data-season="秋"] .season-symbol{width:49%;height:34%;border-radius:90% 5%;background:currentColor;transform:rotate(-18deg)}
+[data-season="秋"] .season-symbol:after{content:"";position:absolute;inset:50% 6% auto;height:1px;background:#faebd0;transform:rotate(-25deg)}
+#dial[data-season="冬"]{background:#e2eef0;color:#537781}[data-season="冬"] .season-symbol:before{content:"❄"}
+#dialReadout{position:absolute;left:0;top:calc(100% + 9px);white-space:nowrap;padding:6px 10px;border-radius:14px;background:#faf8eced;font-size:12px}
+.location-block{top:calc(var(--map-top) + var(--map-size) + 16px)}
+#game:has(#dialReadout:not([hidden])) .location-block{visibility:hidden}
 .location-block{opacity:0;pointer-events:none}.location-block>*{pointer-events:none}
 .arriving{animation:arrive 4s both}@keyframes arrive{0%,100%{opacity:0}12%,87%{opacity:1}}
 .gear-icon{width:44px;height:44px;flex:none;position:relative;color:#476659;background:#faf7e4db;border-radius:50%;border:1px solid #72876b65}
@@ -27,9 +34,9 @@
 .cast-button{min-height:46px;padding:11px 22px}.cast-button>span{font-size:18px}
 #joystick{position:fixed;z-index:5;width:82px;height:82px;transform:translate(-50%,-50%);border:1px solid #fff8dfb0;border-radius:50%;background:#46645245;display:grid;place-items:center;pointer-events:none}
 #joystick i{width:33px;height:33px;border-radius:50%;background:#fffae5c9}
-.topbar,.gear-icon,.side-nav,.waypoint{transition:opacity .55s}
-.idle-hud .topbar,.idle-hud .side-nav,.idle-hud .gear-icon,.idle-hud .waypoint{opacity:.16}
-.idle-hud :is(.topbar,.side-nav,.waypoint):has(:focus-visible),.idle-hud .gear-icon:focus-visible{opacity:1}
+.top-actions,#dial,.gear-icon,.side-nav{transition:opacity .55s}
+.idle-hud .top-actions,.idle-hud #dial,.idle-hud .side-nav,.idle-hud .gear-icon{opacity:.42}
+.idle-hud :is(.top-actions,.side-nav):has(:focus-visible),.idle-hud #dial:focus-visible,.idle-hud .gear-icon:focus-visible{opacity:1}
 .waypoint{position:absolute;z-index:3;top:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:7px;padding:0 2px 0 11px;border-radius:18px;background:#faf8e8e8;color:#405744;font-size:12px;white-space:nowrap}
 .waypoint-arrow{width:11px;height:13px;background:#87682d;clip-path:polygon(50% 0,100% 100%,50% 74%,0 100%)}#cancelWaypoint{width:32px;height:32px}body:has(dialog[open]) .waypoint{display:none}
 .panel-dialog:is([data-kind="clock"],[data-kind="rod"],[data-kind="bait"]){width:min(370px,92vw);height:auto;max-height:90dvh;padding:32px}
@@ -37,9 +44,9 @@
 #panelContent [aria-pressed="true"]{background:var(--deep);color:var(--paper)}
 .map-legend button{margin:4px}
 @media(max-width:650px){.waypoint{top:68px}.waypoint:not([hidden])~.toast{top:105px}.fishing-hud{gap:8px}.main-fishing{margin:0}}
-@media(prefers-reduced-motion:reduce){.dial-speck{animation:none}.topbar,.gear-icon,.side-nav,.waypoint{transition:none}}
+@media(prefers-reduced-motion:reduce){.top-actions,#dial,.gear-icon,.side-nav{transition:none}}
 
-#dial .sky-orb{left:var(--orb-x);top:var(--orb-y)}
+
 
 .map-pin{transform:translate(-50%,-11.5px)}
 .player-position,.position-key i{width:14px;height:14px;border:2px solid #fffcef;border-radius:50%;background:#285e73;box-shadow:0 0 0 1.5px #315f69,0 1px 5px #27494e45}
