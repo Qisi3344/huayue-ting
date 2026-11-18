@@ -1,12 +1,21 @@
 export const SEASONS = ['春','夏','秋','冬'];
 export const TIMES = {dawn:'清晨',day:'日间',dusk:'黄昏',night:'夜晚'};
+const home={x:.25,z:1.6}, creekDock={x:18,z:1.6};
+const island={x:-7,z:-3,rx:7.15,rz:6.7};
+const defaultWater={bounds:[-2,10.5,-7.2,8.7],spawn:home,obstacles:[island]};
+const ferryWater={bounds:[-3,21,-10,10],spawn:home,obstacles:[island,{x:19,z:-6,rx:5.9,rz:5.4}]};
+const snowWater={...defaultWater,obstacles:[{...island,rz:7.2}]};
+const fallsWater={...defaultWater,obstacles:[{...island,rx:7.6},{locationId:'falls',x:5.5,z:-7,rx:2.15,rz:1.9}]};
+const reedView={water:0x87c4a3,sky:0xe1efcd,fog:0xdce7bb,light:1,hills:.74,plant:'reed',count:80};
+const snowView={water:0x76abc6,sky:0xc3deec,fog:0xe3f2f5,light:.91,hills:1.4,plant:'pine',count:18};
+const fallsView={water:0x579f94,sky:0xa8d2bf,fog:0xaacbbd,light:.8,hills:1.75,plant:'fern',count:52};
 export const LOCATIONS = [
- {id:'reed',name:'芦眠浅湾',en:'REEDWATER',x:27,y:61,color:'#88b7a1',tag:'初次相遇的地方',description:'风穿过芦苇，木码头晒得暖暖的。岸边与小船都能垂钓。',boat:false},
- {id:'sakura',name:'落樱溪',en:'PETAL CREEK',x:40,y:30,color:'#d6a4b0',tag:'顺着花瓣往上游',description:'溪水带来落花。春天的黄昏，水下也会有一场花开。',boat:false},
- {id:'falls',name:'萤瀑林',en:'FIREFLY FALLS',x:67,y:27,color:'#83a798',tag:'夜色里有另一条河',description:'瀑布脚下住着喜欢急流的小鱼，晚上有萤光陪你。',boat:false},
- {id:'snow',name:'霜镜湖',en:'FROSTMIRROR',x:80,y:51,color:'#9eb7cb',tag:'冬天也值得出门',description:'雪松围着不结冰的泉眼，白气和雪花都慢慢往上飘。',boat:false},
- {id:'tide',name:'琥珀潮汐',en:'AMBER TIDE',x:62,y:76,color:'#c5b28c',tag:'把船划到海风里',description:'有贝壳的沙洲与安静的潮池。小船能载你去更深的水。',boat:false},
- {id:'moon',name:'月心浮岛',en:'MOONHEART',x:51,y:51,color:'#afa6c5',tag:'只有小船能抵达',description:'在湖心停桨，点起一盏灯。星光会一点一点沉进水里。',boat:true}
+ {id:'reed',view:reedView,water:ferryWater,name:'芦眠浅湾',en:'REEDWATER',x:27,y:61,color:'#88b7a1',tag:'初次相遇的地方',description:'风穿过芦苇，木码头晒得暖暖的。岸边与小船都能垂钓。',boat:false},
+ {id:'sakura',water:{...ferryWater,spawn:creekDock},name:'落樱溪',en:'PETAL CREEK',x:40,y:30,color:'#d6a4b0',tag:'顺着花瓣往上游',description:'溪水带来落花。春天的黄昏，水下也会有一场花开。',boat:false},
+ {id:'falls',view:fallsView,water:fallsWater,name:'萤瀑林',en:'FIREFLY FALLS',x:67,y:27,color:'#83a798',tag:'夜色里有另一条河',description:'瀑布脚下住着喜欢急流的小鱼，晚上有萤光陪你。',boat:false},
+ {id:'snow',view:snowView,water:snowWater,name:'霜镜湖',en:'FROSTMIRROR',x:80,y:51,color:'#9eb7cb',tag:'冬天也值得出门',description:'雪松围着不结冰的泉眼，白气和雪花都慢慢往上飘。',boat:false},
+ {id:'tide',water:defaultWater,name:'琥珀潮汐',en:'AMBER TIDE',x:62,y:76,color:'#c5b28c',tag:'把船划到海风里',description:'有贝壳的沙洲与安静的潮池。小船能载你去更深的水。',boat:false},
+ {id:'moon',water:defaultWater,name:'月心浮岛',en:'MOONHEART',x:51,y:51,color:'#afa6c5',tag:'只有小船能抵达',description:'在湖心停桨，点起一盏灯。星光会一点一点沉进水里。',boat:true}
 ];
 export const BAITS = [
  {id:'grain',name:'谷香团',price:20,amount:5,description:'麦粒与米香。所有鱼都吃的安心选择。',color:'#c1a56c'},

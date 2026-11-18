@@ -14,7 +14,7 @@ export function createLake(scene, renderer, banks) {
  mirror.layers.set(1);
  const look = new THREE.Vector3();
  const uniforms = {
-  tint: {value: new THREE.Color()}, sky: {value: new THREE.Color()},
+  limits:{value:new THREE.Vector4(-3,21,-10,10)}, tint: {value: new THREE.Color()}, sky: {value: new THREE.Color()},
   lightTint: {value: new THREE.Color()}, clock: {value: 0}, banks: {value: banks},
   creekVisible: {value: 1}, reflected: {value: reflection.texture},
   mirrorVP: {value: new THREE.Matrix4()}, reflectionTexel: {value: new THREE.Vector2()}
@@ -36,7 +36,7 @@ export function createLake(scene, renderer, banks) {
   fragmentShader: `
    uniform vec3 tint, sky, lightTint;
    uniform float clock, creekVisible;
-   uniform vec4 banks[3];
+   uniform vec4 banks[3],limits;
    uniform sampler2D reflected;
    uniform vec2 reflectionTexel;
    varying vec3 world;
@@ -59,9 +59,12 @@ export function createLake(scene, renderer, banks) {
     float ripple = noise(p*vec2(1.7,6.2)+vec2(-clock*.19,clock*.23));
     vec2 bend = vec2(drift-.5,ripple-.5);
     float depth = smoothstep(-.1,7.8,d+bend.x*.3);
+    float edge=min(min(p.x-limits.x,limits.y-p.x),min(p.y-limits.z,limits.w-p.y));
+    float shoal=1.-smoothstep(-.7,2.3,edge+(drift-.5)*.65);
     vec3 shallow = tint*vec3(1.22,1.12,.93);
     vec3 deep = tint*vec3(.32,.71,.80);
     vec3 color = mix(shallow,deep,depth) * (.96+.08*drift);
+    color=mix(color,tint*vec3(1.35,1.13,.76),shoal*.82);
     vec2 uv = reflectionUV.xy/reflectionUV.w*.5+.5+bend*vec2(.013,.022);
     vec4 refl = (2.*texture2D(reflected,uv) + texture2D(reflected,uv+reflectionTexel) + texture2D(reflected,uv-reflectionTexel))*.25;
     color = color*(1.-.44*refl.a)+.44*refl.rgb;
@@ -190,7 +193,7 @@ export function createLake(scene, renderer, banks) {
   renderer.setRenderTarget(reflection);renderer.render(scene,mirror);renderer.setRenderTarget(null);
   scene.background=background;renderer.setClearColor(background,alpha);renderer.shadowMap.autoUpdate=shadowsEnabled;
  }
- return {tint:uniforms.tint.value,resize,update,capture,resetWake,invalidate,
+ return {setBounds(bounds){uniforms.limits.value.fromArray(bounds);},tint:uniforms.tint.value,resize,update,capture,resetWake,invalidate,
   environment(sky,light,creek,invalidate=true){uniforms.sky.value.copy(sky);uniforms.lightTint.value.copy(light);uniforms.creekVisible.value=Number(creek);if(invalidate)lastCapture=-Infinity;},
   dispose(){reflection.dispose();}
  };

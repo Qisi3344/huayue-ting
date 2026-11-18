@@ -34,3 +34,24 @@ for(const id of ['reed','sakura']){
 const mid={x:(ports.reed.x+ports.sakura.x)/2,z:ports.reed.z,onBoat:true};
 assert.deepEqual(mapPosition(LOCATIONS,'reed',mid),mapPosition(LOCATIONS,'sakura',mid));
 assert.notDeepEqual(mapPosition(LOCATIONS,'reed',mid),mapPosition(LOCATIONS,'reed',{...mid,z:0}));
+
+// Same approach to the mapped waterfall rock in two different waters.
+function approachRock(site){
+ const boat=createNavigation();boat.setHarbor(site);boat.reset();boat.setSailing(true);
+ boat.setInput(1,0);
+ for(let i=0;i<120 && boat.snapshot().x<5.5;i++)boat.step(.04);
+ assert.ok(boat.snapshot().x>=5.5);
+ boat.setInput(0,-1);
+ let slowed=false;
+ for(let i=0;i<130;i++){
+  const pos=boat.step(.04);
+  if(site==='falls'){
+   assert.ok(Math.hypot((pos.x-5.5)/2.15,(pos.z+7)/1.9)>=1);
+   if(pos.z < -4 && pos.speed < 1.5)slowed=true;
+  }
+ }
+ if(site==='falls')assert.ok(slowed);
+ return boat.snapshot();
+}
+assert.ok(approachRock('reed').z < -8);
+approachRock('falls');

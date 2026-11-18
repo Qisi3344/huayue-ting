@@ -1,3 +1,5 @@
+import {mergeGeometries} from '../vendor/BufferGeometryUtils.js';
+import {LOCATIONS} from './data.js';
 import {batchRigidMeshes} from './boat.js';
 import * as THREE from '../vendor/three.module.js';
 import {GLTFLoader} from '../vendor/GLTFLoader.js';
@@ -32,7 +34,8 @@ export async function createWorld(container,options={}) {
  }
  bank(shore,-7,-.54,-3,6.2,1.08,5.8,bankMat);bank(shore,-7,-.1,-3,6.15,.5,5.7,groundMat,true);
  bank(shore,-13,-.4,5,5.8,.9,4,bankMat);bank(shore,-13,-.1,5,5.7,.35,3.9,groundMat,true);
- for(let i=0;i<8;i++){ball(scene,-22+i*6,-1,-20-(i%3)*4,7,4+(i%3)*1.8,5,i%2?hillMat:farHillMat);}
+ const hills=new THREE.Group();scene.add(hills);
+ for(let i=0;i<8;i++){ball(hills,-22+i*6,-1,-20-(i%3)*4,7,4+(i%3)*1.8,5,i%2?hillMat:farHillMat);}
  const dock=new THREE.Group();scene.add(dock);dock.position.set(-3.2,.19,1.2);
  for(let i=0;i<9;i++){box(dock,-2.8+i*.47,0,0,.43,.15,1.7,i%2?wood:woodLight);}
  for(const x of [-2.7,.9])for(const z of [-.7,.7]){rodBetween(dock,[x,-.7,z],[x,.28,z],.09,woodDark);ball(dock,x,.29,z,.1,.05,.1,woodLight);}
@@ -50,6 +53,32 @@ export async function createWorld(container,options={}) {
  const reeds=new THREE.Group();decorations.add(reeds);
  let seed=77;const rand=()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646;};
  for(let i=0;i<42;i++){const x=-4.6-rand()*6.3,z=-.7+rand()*6;for(let j=0;j<3;j++){const h=.5+rand()*.8;rodBetween(reeds,[x,.03,z],[x+(rand()-.5)*.3,h,z],.018,darkLeaf);if(j===0)ball(reeds,x,h,z,.045,.16,.045,trunkMat);}}
+ // Root each stand on the island surface. Three groups share one draw per stand.
+ const stands=new Map();
+ for(const place of LOCATIONS.filter(place=>place.view)){
+  const v=place.view,pine=v.plant==='pine',reed=v.plant==='reed';
+  let geometry;
+  if(pine){
+   const tiers=[new THREE.ConeGeometry(1,.62,8).translate(0,-.19,0),new THREE.ConeGeometry(.77,.60,8).translate(0,.04,0),new THREE.ConeGeometry(.50,.5,8).translate(0,.26,0)];
+   geometry=mergeGeometries(tiers);tiers.forEach(g=>g.dispose());
+  }else if(reed){
+   geometry=new THREE.CylinderGeometry(.35,1,1,5);
+  }else{
+   const blades=[];
+   for(let n=0;n<7;n++){const angle=n*2.4,height=.5+.22*Math.cos(n);const blade=new THREE.SphereGeometry(1,6,3).scale(.14,height,.045).rotateZ(-.64).translate(.3,-.12,0).rotateY(angle);blades.push(blade);}
+   geometry=mergeGeometries(blades);blades.forEach(g=>g.dispose());
+  }
+  const stand=new THREE.InstancedMesh(geometry,mat(pine?0x92aca8:reed?0x9baf70:0x639775),v.count);
+  const pose=new THREE.Object3D();
+  for(let i=0;i<v.count;i++){
+   const angle=i*2.39996,r=Math.sqrt((i+.5)/v.count)*.92;
+   const h=(pine?2.6:reed?.9:.65)*(.72+.28*Math.sin(i*3.7));
+   const radius=pine?.68:reed?.045:.31;
+   pose.position.set(-7+Math.cos(angle)*5.9*r,-.1+.5*Math.sqrt(1-r*r)+h/2,-3+Math.sin(angle)*5.4*r);
+   pose.scale.set(radius,h,radius);pose.rotation.z=reed?.16*Math.sin(i):0;pose.updateMatrix();stand.setMatrixAt(i,pose.matrix);
+  }
+  stand.visible=false;scene.add(stand);stands.set(place.id,stand);
+ }
  const creek = new THREE.Group();
  scene.add(creek);
  const landing = landings.sakura;
@@ -112,7 +141,7 @@ export async function createWorld(container,options={}) {
  batchRigidMeshes(boat,paddle);
  const particles=[];const particleMat=new THREE.MeshBasicMaterial({color:0xf2d8ce,side:THREE.DoubleSide,transparent:true,opacity:.8});
  for(let i=0;i<28;i++){const p=mesh(new THREE.PlaneGeometry(.08+rand()*.07,.06),particleMat,scene);p.position.set((rand()-.5)*22,1+rand()*7,(rand()-.5)*20);p.rotation.set(rand()*3,rand()*3,rand()*3);p.castShadow=false;particles.push({p,x:p.position.x,y:p.position.y,z:p.position.z,speed:.2+rand()*.4});}
- const fallsGroup=new THREE.Group();scene.add(fallsGroup);fallsGroup.visible=false;ball(fallsGroup,5.5,1,-7,1.6,2.7,1.3,rockMat);const fallsMat=new THREE.MeshBasicMaterial({color:0xc9e8df,transparent:true,opacity:.68});box(fallsGroup,5.35,1.9,-5.8,.8,3.4,.08,fallsMat);const fallsRipple=ripple(5.3,-5,1.2);
+ const fallsGroup=new THREE.Group();scene.add(fallsGroup);fallsGroup.visible=false;ball(fallsGroup,5.5,1,-7,1.6,2.7,1.3,rockMat);const fallsMat=new THREE.MeshBasicMaterial({color:0xc9e8df,transparent:true,opacity:.68});box(fallsGroup,5.35,1.9,-5.8,.8,3.4,.08,fallsMat);for(let i=0;i<3;i++){const stream=box(fallsGroup,5.08+i*.32,1.03,-5.65,.27,2.35,.09,fallsMat);stream.rotation.x=-.16;}const fallsRipple=ripple(5.3,-5,1.2);
  const palettes={
   '春':{water:0x9bcbbf,ground:0xc4d7a5,leaves:0xa2bd86,flowers:0xe9bfc8,sky:0xe0edcf,hills:0xb8cba9,particle:0xf1d2ce},
   '夏':{water:0x83bfb3,ground:0xb7d093,leaves:0x80a874,flowers:0xe4bfa7,sky:0xd4e9d1,hills:0x9bbca0,particle:0xdbe5b9},
@@ -136,7 +165,7 @@ export async function createWorld(container,options={}) {
  let season='春',time='day',location='reed',onBoat=true,phase='idle',disposed=false,frames=0,raf=0;
  let weather='晴',blend=null;
  scene.background=new THREE.Color();scene.fog=new THREE.Fog(0xffffff,27,69);
- const colors=[scene.background,lake.tint,groundMat.color,bankMat.color,leafMat.color,darkLeaf.color,flowerMat.color,hillMat.color,farHillMat.color,particleMat.color,ambient.color,sun.color];
+ const colors=[scene.fog.color,scene.background,lake.tint,groundMat.color,bankMat.color,leafMat.color,darkLeaf.color,flowerMat.color,hillMat.color,farHillMat.color,particleMat.color,ambient.color,sun.color];
  const scalars=[[sun,'intensity'],[ambient,'intensity'],[lampLight,'intensity'],[scene.fog,'near'],[scene.fog,'far']];
  function snapshot(){return {colors:colors.map(c=>c.clone()),values:scalars.map(([obj,key])=>obj[key]),sun:sun.position.clone()};}
  function blendFrame(f){
@@ -144,13 +173,15 @@ export async function createWorld(container,options={}) {
   for(let i=0;i<colors.length;i++)colors[i].lerpColors(from.colors[i],to.colors[i],f);
   scalars.forEach(([obj,key],i)=>obj[key]=THREE.MathUtils.lerp(from.values[i],to.values[i],f));
   sun.position.lerpVectors(from.sun,to.sun,f);
-  scene.fog.color.copy(scene.background);lake.environment(scene.background,sun.color,creek.visible,false);
+  lake.environment(scene.background,sun.color,creek.visible,false);
  }
  function applyEnvironment(transition=false){const from=transition?snapshot():null;blend=null;const p=palettes[season];lake.tint.setHex(p.water);groundMat.color.setHex(p.ground);bankMat.color.setHex(season==='冬'?0xc4d4cb:0xa1b58e);leafMat.color.setHex(p.leaves);darkLeaf.color.setHex(p.leaves).multiplyScalar(.8);flowerMat.color.setHex(p.flowers);hillMat.color.setHex(p.hills);farHillMat.color.setHex(p.sky).lerp(new THREE.Color(p.hills),.45);particleMat.color.setHex(p.particle);let sky=p.sky;if(location==='tide'){lake.tint.setHex(season==='冬'?0xb5cecb:0x9fcac3);groundMat.color.setHex(0xdfcda6);}if(location==='moon'&&time==='night')lake.tint.setHex(0x738c9f);if(location==='snow'){groundMat.color.setHex(0xe2e8df);leafMat.color.setHex(0xbacbc2);}if(location==='sakura')trees[0].g.scale.setScalar(1.55);else trees[0].g.scale.setScalar(1.35);fallsRipple.visible=fallsGroup.visible=location==='falls';
   const night=time==='night',dusk=time==='dusk';if(night){sky=0x697e85;lake.tint.multiplyScalar(.59);leafMat.color.multiplyScalar(.72);ambient.intensity=1.15;ambient.color.setHex(0xc0c9e7);sun.color.setHex(0xbcc9e9);sun.intensity=1.45;sun.position.set(-8,14,4);lampLight.intensity=3.2;particleMat.color.setHex(0xf0e4a5);}else{ambient.intensity=dusk?1.9:2.3;ambient.color.setHex(dusk?0xf6ddc0:0xfffde4);sun.color.setHex(dusk?0xf2cc9c:0xffeed0);sun.intensity=dusk?2.7:3.2;sun.position.set(dusk?-17:-10,dusk?11:19,10);lampLight.intensity=dusk?.6:0;if(dusk){sky=0xe7cdb8;lake.tint.lerp(new THREE.Color(0xd4c2a5),.2);}}if(time==='dawn'){sky=0xe6d9ce;sun.color.setHex(0xffd4ac);ambient.intensity=1.75;sun.intensity=2.2;sun.position.set(13,9,7);lake.tint.lerp(new THREE.Color(0xc7c3b4),.22);}
   scene.background.setHex(sky);scene.fog.near=27;scene.fog.far=69;
   if(weather==='薄雾'||weather==='细雨'){scene.background.lerp(new THREE.Color(0xb9c5bf),.26);scene.fog.near=weather==='薄雾'?10:20;scene.fog.far=weather==='薄雾'?38:55;sun.intensity*=.82;}
-  scene.fog.color.copy(scene.background);renderer.setClearColor(scene.background);lake.environment(scene.background,sun.color,creek.visible);
+  const view=LOCATIONS.find(place=>place.id===location)?.view;
+  if(view){lake.tint.lerp(new THREE.Color(view.water).multiplyScalar(night?.52:dusk?.82:1),.52);scene.background.lerp(new THREE.Color(view.sky).multiplyScalar(night?.23:dusk?.7:1),.28);sun.intensity*=view.light;}
+  scene.fog.color.copy(scene.background);if(view)scene.fog.color.lerp(new THREE.Color(view.fog).multiplyScalar(night?.23:1),.25);renderer.setClearColor(scene.background);lake.environment(scene.background,sun.color,creek.visible);
   if(from){blend={from,to:snapshot(),start:performance.now()};blendFrame(0);}
  }
  function setClimate(s,t,w,immediate=false){season=s;time=t;weather=w;applyEnvironment(!immediate);}
@@ -159,10 +190,20 @@ export async function createWorld(container,options={}) {
   navigation.setHarbor(id);
   if(!keepPosition){navigation.reset();lake.resetWake();}
   creek.visible=Boolean(otherLanding(id));
-  const key=creek.visible?'route':id==='falls'?'falls':'local';
+  const place=LOCATIONS.find(p=>p.id===id);
+  lake.setBounds(place.water.bounds);
+  const island=place.water.obstacles[0],sx=island.rx/7.15,sz=island.rz/6.7;
+  for(const mesh of shore.children.slice(0,2)){const grass=mesh.material===groundMat;mesh.scale.x=(grass?6.15:6.2)*sx;mesh.scale.z=(grass?5.7:5.8)*sz;}
+  banks[0].copy(waterline(-7,-.1,-3,6.15*sx,.5,5.7*sz));
+  hills.scale.y=place.view?.hills??1;
+  reeds.visible=id!=='snow'&&id!=='falls';
+  for(const [site,stand] of stands)stand.visible=site===id;
+  for(const tree of trees)tree.g.visible=!(['snow','falls'].includes(id)&&tree.type==='flower');
+  for(const flower of grassFlowers)flower.visible=id!=='snow'&&id!=='falls';
+  const key=creek.visible?'route':id==='falls'||id==='snow'?id:'local';
   options.minimap?.setArea(key,{
    banks:creek.visible?banks:banks.slice(0,2),
-   trees:trees.filter(({g})=>g.parent!==creek||creek.visible),
+   trees:trees.filter(({g})=>g.visible&&(g.parent!==creek||creek.visible)),
    docks:creek.visible?[dock,pier]:[dock],falls:id==='falls'
   });
   applyEnvironment();
