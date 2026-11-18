@@ -1,6 +1,6 @@
 # 花月汀 · 小狼的四季鱼笺
 
-![花月汀预览](./preview.png)
+![芦眠浅湾日间实机画面](verification/16-shallows.png)
 
 v0.2 今日版已补齐划船、Blender 小狼模型与回归验收，详见 [2026-11-17 交付记录](verification/HANDOFF_2026-11-17.md)。
 
@@ -34,7 +34,7 @@ v0.2 今日版已补齐划船、Blender 小狼模型与回归验收，详见 [20
 
 ## 检查
 
-`npm run check` 检查 JS 语法、鱼种数量、所有水域／四季／时段鱼池、每条鱼的可达性、船只限制、六星保底与航行的移动／停泊／暂停／边界／救援，并重新输出 CSV。
+`npm run check` 检查 JS 语法、鱼种数量、所有水域／四季／时段鱼池、每条鱼的可达性、船只限制、六星保底与航行的移动／停泊／暂停／边界／救援，以及岸线、鱼群避船和尾迹消散，并重新输出 CSV。
 
 `uv run --with playwright python tools/verify.py` 通过独立无头 Chrome 实际操作 UI；浏览器截图和验证结果写入 verification。该脚本读取测试用的全新浏览器存档，不修改游玩浏览器的存档。
 
