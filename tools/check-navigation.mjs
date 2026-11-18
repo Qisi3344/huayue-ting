@@ -23,3 +23,14 @@ for(const [from,to,direction] of [['reed','sakura',1],['sakura','reed',-1]]){
  assert.equal(ferry.snapshot().x,to==='sakura'?18:.25,'救援回到当前水域');
 }
 console.log(JSON.stringify({navigationChecks:['movement','anchor','pause','water boundary','return dock','island collision','ashore movement blocked','two-way harbor crossing and rescue'],status:'passed'},null,2));
+
+const {mapPosition,landings:ports}=await import('../src/navigation.js');
+const {LOCATIONS}=await import('../src/data.js');
+for(const id of ['reed','sakura']){
+ const port=LOCATIONS.find(p=>p.id===id);
+ const pos=mapPosition(LOCATIONS,id,{...ports[id],onBoat:true});
+ assert.ok(Math.hypot(pos.x-port.x,pos.y-port.y)<1e-9);
+}
+const mid={x:(ports.reed.x+ports.sakura.x)/2,z:ports.reed.z,onBoat:true};
+assert.deepEqual(mapPosition(LOCATIONS,'reed',mid),mapPosition(LOCATIONS,'sakura',mid));
+assert.notDeepEqual(mapPosition(LOCATIONS,'reed',mid),mapPosition(LOCATIONS,'reed',{...mid,z:0}));

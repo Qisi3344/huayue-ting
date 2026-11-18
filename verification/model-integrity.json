@@ -2,12 +2,17 @@
   "assets": [
     {
       "file": "CHARACTER.md",
-      "bytes": 1077,
+      "bytes": 1362,
       "localPathMatches": 0
     },
     {
       "file": "model-report.json",
       "bytes": 534,
+      "localPathMatches": 0
+    },
+    {
+      "file": "wolf-girl-mobile.glb",
+      "bytes": 264324,
       "localPathMatches": 0
     },
     {
@@ -30,7 +35,16 @@
     "nodes": 49,
     "meshes": 46,
     "materials": 11,
+    "primitives": 47,
     "triangles": 22634,
+    "externalUris": []
+  },
+  "mobile": {
+    "nodes": 6,
+    "meshes": 3,
+    "materials": 11,
+    "primitives": 15,
+    "triangles": 9515,
     "externalUris": []
   }
 }

@@ -161,15 +161,25 @@ export function createLake(scene, renderer, banks) {
  let compact=false, framesSinceCapture=Infinity;
  function resize(width,height){
   compact=width<=650;
-  const scale=(compact?192:384)/Math.max(width,height);
+  const scale=(compact?192:256)/Math.max(width,height);
   reflection.setSize(Math.max(1,Math.round(width*scale)),Math.max(1,Math.round(height*scale)));
   uniforms.reflectionTexel.value.set(.65/reflection.width,.65/reflection.height);lastCapture=-Infinity;
  }
- function capture(t,camera,target){
+ const lastEye=new THREE.Vector3(), lastTarget=new THREE.Vector3();
+ let lastX=0,lastZ=0,lastYaw=0,lastZoom=0,dirty=true;
+ function invalidate(){dirty=true;}
+ function capture(t,camera,target,nav,lightingChanged){
   framesSinceCapture++;
-  if(Number.isFinite(lastCapture) && (framesSinceCapture<(compact?4:2) || t-lastCapture<(compact?.25:.125)))return;
-  framesSinceCapture=0;
-  lastCapture=t;
+  if(!dirty && Number.isFinite(lastCapture)){
+   // Ignore subpixel idle bob and head/tail sway; ripples still animate each frame.
+   const moved=Math.hypot(nav.x-lastX,nav.z-lastZ)>.024 || Math.abs(nav.heading-lastYaw)>.015;
+   const viewChanged=camera.position.distanceToSquared(lastEye)>.0009 || target.distanceToSquared(lastTarget)>.0009 || Math.abs(camera.zoom-lastZoom)>.001;
+   if(!moved && !viewChanged && !lightingChanged)return;
+   if(t-lastCapture<(compact?1/8:1/16) || (compact && framesSinceCapture<2))return;
+  }
+  dirty=false;framesSinceCapture=0;lastCapture=t;
+  lastEye.copy(camera.position);lastTarget.copy(target);lastZoom=camera.zoom;
+  lastX=nav.x;lastZ=nav.z;lastYaw=nav.heading;
   mirror.projectionMatrix.copy(camera.projectionMatrix);
   mirror.position.copy(camera.position);mirror.position.y=2*waterHeight-camera.position.y;
   look.copy(target);look.y=2*waterHeight-target.y;
@@ -180,7 +190,7 @@ export function createLake(scene, renderer, banks) {
   renderer.setRenderTarget(reflection);renderer.render(scene,mirror);renderer.setRenderTarget(null);
   scene.background=background;renderer.setClearColor(background,alpha);renderer.shadowMap.autoUpdate=shadowsEnabled;
  }
- return {tint:uniforms.tint.value,resize,update,capture,resetWake,
+ return {tint:uniforms.tint.value,resize,update,capture,resetWake,invalidate,
   environment(sky,light,creek,invalidate=true){uniforms.sky.value.copy(sky);uniforms.lightTint.value.copy(light);uniforms.creekVisible.value=Number(creek);if(invalidate)lastCapture=-Infinity;},
   dispose(){reflection.dispose();}
  };

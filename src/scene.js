@@ -1,3 +1,4 @@
+import {batchRigidMeshes} from './boat.js';
 import * as THREE from '../vendor/three.module.js';
 import {GLTFLoader} from '../vendor/GLTFLoader.js';
 import {createNavigation, landings, otherLanding} from './navigation.js';
@@ -57,6 +58,7 @@ export async function createWorld(container,options={}) {
  for(const [dx,dz,size] of [[-1,-5,1.3],[1,-6,1.55],[3,-4.8,1.2]]) {
   creek.add(tree(landing.x+dx,dz,size,'flower'));
  }
+ batchRigidMeshes(dock);
  const pier = dock.clone();
  pier.position.set(landing.x,.19,-2.9);
  pier.rotation.y=Math.PI/2;
@@ -69,10 +71,11 @@ export async function createWorld(container,options={}) {
  function ripple(x,z,r,opacity=.6){const m=mesh(new THREE.RingGeometry(r,r+.012,64),waterLine.clone());m.rotation.x=-Math.PI/2;m.position.set(x,-.08,z);m.material.opacity=opacity;m.castShadow=false;m.receiveShadow=false;rippleObjects.push({m,base:r,phase:rand()*6});return m;}
  const grassFlowers=[];
  for(let i=0;i<38;i++){const x=-3.5-rand()*6.8,z=-4.8+rand()*6.2;if((x+7)**2+(z+3)**2>25)continue;const g=new THREE.Group();g.position.set(x,.35,z);decorations.add(g);rodBetween(g,[0,0,0],[0,.16,0],.012,darkLeaf);for(let p=0;p<5;p++){const a=p*6.28/5;ball(g,Math.cos(a)*.055,.17,Math.sin(a)*.055,.05,.03,.05,flowerMat);}grassFlowers.push(g);}
- const boat=new THREE.Group();scene.add(boat);boat.position.set(.25,.02,1.6);boat.rotation.y=-.27;
+ const boatFrame=new THREE.Group();scene.add(boatFrame);
+ const boat=new THREE.Group();boatFrame.add(boat);boat.position.y=.02;
  const hullShape=new THREE.Shape();hullShape.moveTo(-.8,-1.25);hullShape.quadraticCurveTo(-1.05,-.2,-.8,.95);hullShape.quadraticCurveTo(-.2,1.7,0,1.8);hullShape.quadraticCurveTo(.25,1.7,.8,.95);hullShape.quadraticCurveTo(1.05,-.2,.8,-1.25);hullShape.quadraticCurveTo(0,-1.7,-.8,-1.25);
- const hull=mesh(new THREE.ExtrudeGeometry(hullShape,{depth:.4,bevelEnabled:true,bevelSize:.09,bevelThickness:.1,bevelSegments:2,steps:1}),wood,boat,true);hull.rotation.x=-Math.PI/2;hull.position.y=-.11;
- const deck=mesh(new THREE.ShapeGeometry(hullShape,24),woodLight,boat);deck.rotation.x=-Math.PI/2;deck.position.y=.4;deck.scale.set(.91,.91,.91);
+ const hull=mesh(new THREE.ExtrudeGeometry(hullShape,{depth:.4,bevelEnabled:true,bevelSize:.09,bevelThickness:.1,bevelSegments:2,steps:1}),wood,boat,true);hull.rotation.set(-Math.PI/2,0,Math.PI);hull.position.y=-.11;
+ const deck=mesh(new THREE.ShapeGeometry(hullShape,24),woodLight,boat);deck.rotation.set(-Math.PI/2,0,Math.PI);deck.position.y=.4;deck.scale.set(.91,.91,.91);
  for(let i=0;i<7;i++)box(boat,0,.415,-1.1+i*.38,1.28,.035,.015,woodDark);
  box(boat,0,.61,-.45,1.6,.12,.36,woodDark,true);box(boat,0,.6,.55,1.6,.12,.27,woodDark,true);
  rodBetween(boat,[-.6,.62,-.9],[-1.8,.18,1.25],.038,woodDark);const paddle=ball(boat,-1.77,.18,1.28,.14,.045,.4,wood);paddle.rotation.y=-.5;
@@ -106,6 +109,7 @@ export async function createWorld(container,options={}) {
  const bobber=new THREE.Group();scene.add(bobber);bobber.position.set(3.4,0,3.5);ball(bobber,0,.04,0,.07,.13,.07,cream);ball(bobber,0,.13,0,.06,.055,.06,mat(0xc88477));rodBetween(bobber,[0,.1,0],[0,.29,0],.012,woodDark);const bobberRipple=ripple(3.4,3.5,.28,.8);
  const lineGeometry=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);const line=new THREE.Line(lineGeometry,new THREE.LineBasicMaterial({color:0xe9ecd6,transparent:true,opacity:.9}));scene.add(line);
  const lanternGroup=new THREE.Group();boat.add(lanternGroup);lanternGroup.position.set(.35,.68,1.15);const lampMat=new THREE.MeshBasicMaterial({color:0xffdf91});box(lanternGroup,0,.17,0,.21,.29,.2,lampMat);for(const x of [-.12,.12])for(const z of [-.11,.11])rodBetween(lanternGroup,[x,0,z],[x,.34,z],.015,woodDark);box(lanternGroup,0,.35,0,.29,.05,.27,woodDark);const lampLight=new THREE.PointLight(0xffd585,0,6,1.5);lampLight.position.set(0,.5,0);lanternGroup.add(lampLight);
+ batchRigidMeshes(boat,paddle);
  const particles=[];const particleMat=new THREE.MeshBasicMaterial({color:0xf2d8ce,side:THREE.DoubleSide,transparent:true,opacity:.8});
  for(let i=0;i<28;i++){const p=mesh(new THREE.PlaneGeometry(.08+rand()*.07,.06),particleMat,scene);p.position.set((rand()-.5)*22,1+rand()*7,(rand()-.5)*20);p.rotation.set(rand()*3,rand()*3,rand()*3);p.castShadow=false;particles.push({p,x:p.position.x,y:p.position.y,z:p.position.z,speed:.2+rand()*.4});}
  const fallsGroup=new THREE.Group();scene.add(fallsGroup);fallsGroup.visible=false;ball(fallsGroup,5.5,1,-7,1.6,2.7,1.3,rockMat);const fallsMat=new THREE.MeshBasicMaterial({color:0xc9e8df,transparent:true,opacity:.68});box(fallsGroup,5.35,1.9,-5.8,.8,3.4,.08,fallsMat);const fallsRipple=ripple(5.3,-5,1.2);
@@ -118,12 +122,15 @@ export async function createWorld(container,options={}) {
  const navigation=createNavigation();navigation.setSailing(false);
  let modelHead=null,modelTail=null;
  try{
-  const gltf=await new GLTFLoader().loadAsync('assets/wolf-girl.glb');
+  const mobile=matchMedia('(max-width:650px), (pointer:coarse)').matches;
+  const loader=new GLTFLoader();
+  const full='assets/wolf-girl.glb';
+  const gltf=mobile ? await loader.loadAsync('assets/wolf-girl-mobile.glb').catch(()=>loader.loadAsync(full)) : await loader.loadAsync(full);
   gltf.scene.traverse(o=>{if(!o.isMesh)return;const original=o.material;const color=original?.color||new THREE.Color(0x939fa5);const unlit=/Pupil|Glint|Iris/.test(original?.name||'');o.material=unlit?new THREE.MeshBasicMaterial({color}):mat(color.clone());o.castShadow=true;o.receiveShadow=true;});
   body.visible=false;wolfRoot.add(gltf.scene);modelHead=gltf.scene.getObjectByName('Head_Pivot');modelTail=gltf.scene.getObjectByName('Tail_Pivot');container.dataset.characterModel='blender-glb';
  }catch(error){console.warn('Blender character unavailable; using the original procedural blockout.',error.message);container.dataset.characterModel='procedural-fallback';}
  // Only nearby subjects contribute to the cached water reflection.
- for(const subject of [ambient,sun,rim,...trees.map(tree=>tree.g),dock,pier,boat,wolfRoot]){
+ for(const subject of [ambient,sun,rim,dock,pier,boat,wolfRoot]){
   subject.traverse(object=>object.layers.enable(1));
  }
  let season='春',time='day',location='reed',onBoat=true,phase='idle',disposed=false,frames=0,raf=0;
@@ -154,38 +161,54 @@ export async function createWorld(container,options={}) {
   creek.visible=Boolean(otherLanding(id));
   applyEnvironment();
  }
- function setBoat(value){onBoat=Boolean(value);navigation.setOnBoat(onBoat);if(!onBoat){navigation.reset();lake.resetWake();}boat.visible=onBoat;wolfRoot.position.set(onBoat?.25:location==="sakura"?landing.x:-2.15,onBoat?.59:.37,onBoat?1.45:location==="sakura"?-2.3:1.15);wolfRoot.rotation.y=onBoat?.34:.6;bobber.position.x=onBoat?3.4:location==='sakura'?landing.x+2:.5;bobber.position.z=onBoat?3.5:location==='sakura'?1:3;bobberRipple.position.set(bobber.position.x,-.08,bobber.position.z);}
- function setSailing(value){navigation.setSailing(value);fishingGear.visible=!value;bobber.visible=!value;bobberRipple.visible=!value;line.visible=!value;}
+ function setBoat(value){
+  onBoat=Boolean(value);navigation.setOnBoat(onBoat);
+  if(!onBoat){navigation.reset();lake.resetWake();}
+  boatFrame.visible=onBoat;
+  (onBoat?boat:scene).add(wolfRoot);
+  (onBoat?boatFrame:scene).add(bobber,bobberRipple);
+  if(onBoat){
+   wolfRoot.position.set(0,.57,-.15);wolfRoot.rotation.set(0,.34,0);
+   bobber.position.set(3.15,0,1.9);
+  }else{
+   const atCreek=location==='sakura';
+   wolfRoot.position.set(atCreek?landing.x:-2.15,.37,atCreek?-2.3:1.15);wolfRoot.rotation.set(0,.6,0);
+   bobber.position.set(atCreek?landing.x+2:.5,0,atCreek?1:3);
+  }
+  bobberRipple.position.set(bobber.position.x,-.08,bobber.position.z);
+  lake.invalidate();
+ }
+ function setSailing(value){lake.invalidate();navigation.setSailing(value);fishingGear.visible=!value;bobber.visible=!value;bobberRipple.visible=!value;line.visible=!value;}
  function setPaddle(x,z){navigation.setInput(x,z);}
  function setPaused(value){navigation.setPaused(value);}
  function returnDock(){navigation.reset();lake.resetWake();setSailing(false);}
  function getNavigation(){return navigation.snapshot();}
  let waypoint=null;
  function trackLanding(id){waypoint=landings[id] || null;}
- function setFishing(value){phase=value;}
+ function setFishing(value){if(phase!==value)lake.invalidate();phase=value;}
  function setCatchQuality(stars){particleMat.color.setHex(stars>=5?0xf8e4a9:palettes[season].particle);}
  function resize(){const w=container.clientWidth||1440,h=container.clientHeight||960;const ratio=Math.min(devicePixelRatio,w<=650?1.25:1.75);renderer.setPixelRatio(ratio);renderer.setSize(w,h);focus.resize(w,h,ratio);lake.resize(w,h);const view=h>w?14:15.5;camera.left=-view*w/h/2;camera.right=view*w/h/2;camera.top=view/2;camera.bottom=-view/2;camera.updateProjectionMatrix();}
  const observer=new ResizeObserver(resize);observer.observe(container);resize();applyEnvironment();
  let dragging=false,startX=0,startOrbit=0;const canvas=renderer.domElement;
  const down=e=>{dragging=true;startX=e.clientX;startOrbit=orbit;canvas.setPointerCapture(e.pointerId);};const move=e=>{if(dragging)orbit=THREE.MathUtils.clamp(startOrbit-(e.clientX-startX)*.003,.12,.94);};const up=()=>{dragging=false;};const wheel=e=>{e.preventDefault();targetZoom=THREE.MathUtils.clamp(targetZoom-e.deltaY*.0006,.8,1.4);};
  canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);canvas.addEventListener('wheel',wheel,{passive:false});
- const tipWorld=new THREE.Vector3();const clock=new THREE.Clock();let lastWorldTime=0;
+ const tipWorld=new THREE.Vector3(),floatWorld=new THREE.Vector3();const clock=new THREE.Clock();let lastWorldTime=0;
  function animate(){if(disposed)return;const t=clock.getElapsedTime(),motion=reduced?0:1;const dt=Math.min(.1,t-lastWorldTime);lastWorldTime=t;const nav=navigation.step(dt);
-  if(blend){const f=Math.min(1,(performance.now()-blend.start)/4000);blendFrame(f*f*(3-2*f));if(f===1)blend=null;}
+  if(blend){const f=Math.min(1,(performance.now()-blend.start)/4000);blendFrame(f*f*(3-2*f));if(f===1){blend=null;lake.invalidate();}}
   if(navigation.reachedDestination()) options.onArrival?.(otherLanding(location));
-  frames++;zoom+=(targetZoom-zoom)*.08;camera.zoom=zoom;camera.updateProjectionMatrix();target.x+=((onBoat?nav.x-.25:location==='sakura'?landing.x:0)-target.x)*.07;target.z+=((onBoat?nav.z-1.6:0)*.7-target.z)*.07;const angle=orbit+Math.sin(t*.04)*.013*motion;camera.position.set(target.x+Math.sin(angle)*21,12.8,target.z+Math.cos(angle)*21);camera.lookAt(target);
+  frames++;zoom+=(targetZoom-zoom)*.08;camera.zoom=zoom;camera.updateProjectionMatrix();target.x+=((onBoat?nav.x-.25:location==='sakura'?landing.x:0)-target.x)*.07;target.z+=((onBoat?nav.z-1.6:0)*.7-target.z)*.07;const angle=orbit;camera.position.set(target.x+Math.sin(angle)*21,12.8,target.z+Math.cos(angle)*21);camera.lookAt(target);
   if(waypoint && nav.sailing && !nav.paused){
    const dx=waypoint.x-nav.x, dz=waypoint.z-nav.z;
    const right=dx*Math.cos(angle)-dz*Math.sin(angle);
    const up=-(dx*Math.sin(angle)+dz*Math.cos(angle))*Math.sin(Math.atan2(camera.position.y-target.y,21));
    options.onBearing?.(Math.atan2(right,up),Math.ceil(Math.hypot(dx,dz)));
   }
-  if(onBoat){boat.position.set(nav.x,.02+Math.sin(t*1.1)*.035*motion,nav.z);boat.rotation.z=Math.sin(t*.9)*.012*motion;boat.rotation.y=nav.heading;wolfRoot.position.set(nav.x,.59+Math.sin(t*1.1)*.035*motion,nav.z-.15);wolfRoot.rotation.z=Math.sin(t*.9)*.01*motion;bobber.position.x=nav.x+3.15;bobber.position.z=nav.z+1.9;bobberRipple.position.set(bobber.position.x,-.08,bobber.position.z);paddle.rotation.z=nav.sailing&&nav.speed>.1?Math.sin(t*5)*.2:0;}
+  if(onBoat){boatFrame.position.set(nav.x,0,nav.z);boatFrame.rotation.y=nav.heading;boat.position.y=.02+Math.sin(t*1.1)*.035*motion;boat.rotation.z=Math.sin(t*.9)*.012*motion;paddle.rotation.z=nav.sailing&&nav.speed>.1?Math.sin(t*5)*.2:0;}
   head.rotation.z=Math.sin(t*.6)*.025*motion;tailRoot.rotation.y=Math.sin(t*1.4)*.075*motion;if(modelHead)modelHead.rotation.z=Math.sin(t*.6)*.025*motion;if(modelTail)modelTail.rotation.y=Math.sin(t*1.4)*.075*motion;
   for(const r of rippleObjects){const s=1+Math.sin(t*.6+r.phase)*.08*motion;r.m.scale.setScalar(s);}
   bobber.position.y=(phase==='bite'?Math.sin(t*13)*.12:Math.sin(t*1.4)*.025)*motion+(phase==='caught'?.5:0);fishingGear.rotation.z=phase==='reeling'?-.04+Math.sin(t*4)*.025:phase==='caught'?-.21:0;
   for(const {p,x,y,z,speed}of particles){const rain=weather==='细雨',snow=weather==='轻雪';p.visible=rain||snow||season!=='夏'||time==='night'||location==='sakura';if(!motion)continue;p.scale.set(rain?.25:1,rain?3:1,1);p.position.x=x+Math.sin(t*.16+z)*.8;p.position.y=rain||snow?THREE.MathUtils.euclideanModulo(y-t*speed*(rain?6:1),7):y+Math.sin(t*speed)*.4;p.rotation.z=rain?-.2:t*.13+z;}
-  scene.updateMatrixWorld();tipWorld.copy(rodTip).applyMatrix4(fishingGear.matrixWorld);const positions=lineGeometry.attributes.position;positions.setXYZ(0,tipWorld.x,tipWorld.y,tipWorld.z);positions.setXYZ(1,bobber.position.x,bobber.position.y+.13,bobber.position.z);positions.needsUpdate=true;lineGeometry.computeBoundingSphere();lake.update(dt,t,nav,motion);lake.capture(t,camera,target);focus.render(scene,camera);if(frames%30===0)container.dataset.renderFrames=String(frames);raf=requestAnimationFrame(animate);
+  scene.updateMatrixWorld();tipWorld.copy(rodTip).applyMatrix4(fishingGear.matrixWorld);const positions=lineGeometry.attributes.position;positions.setXYZ(0,tipWorld.x,tipWorld.y,tipWorld.z);floatWorld.set(0,.13,0).applyMatrix4(bobber.matrixWorld);positions.setXYZ(1,floatWorld.x,floatWorld.y,floatWorld.z);positions.needsUpdate=true;lineGeometry.computeBoundingSphere();lake.update(dt,t,nav,motion);lake.capture(t,camera,target,nav,Boolean(blend));focus.render(scene,camera);if(frames%30===0)container.dataset.renderFrames=String(frames);raf=requestAnimationFrame(animate);
  }
  animate();container.dataset.sceneReady='true';options.onReady?.();
  return{ready:true,setClimate,setLocation,setBoat,setFishing,setCatchQuality,setSailing,setPaddle,setPaused,returnDock,getNavigation,trackLanding,dispose(){disposed=true;cancelAnimationFrame(raf);observer.disconnect();canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('wheel',wheel);scene.traverse(o=>{o.geometry?.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose();});lake.dispose();focus.dispose();gradient.dispose();renderer.dispose();canvas.remove();}};

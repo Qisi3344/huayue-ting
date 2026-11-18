@@ -7,3 +7,6 @@ wolf-girl.blend 是可编辑的 Blender 源文件。wolf-girl.glb 是游戏实�
 模型通过独立后台 Blender 进程生成，没有读取、修改或覆盖正在打开的其它场景。修改 tools/build-wolf.py 后，在已安装 Blender 的电脑执行 `blender --background --factory-startup --python tools/build-wolf.py` 即可重新生成。
 
 这份模型仍是可编辑体块稿，部件有清楚名称，头与尾巴有独立的姿态节点及 .blend 内的轻待机关键帧。尚未完成生产级连续拓扑、手绘 UV 贴图、蒙皮骨骼或面部绑定。头尾动作在游戏中由程序驱动。
+
+
+移动或窄屏设备在启动时加载 wolf-girl-mobile.glb。它从原 GLB 离线减面，按身体、头和尾的支点合并静态部件。使用 Blender 后台执行 tools/build-mobile-wolf.py 可重建；tools/check-model.py 核对两版的面数和材质批次。

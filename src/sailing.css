@@ -40,3 +40,9 @@
 @media(prefers-reduced-motion:reduce){.dial-speck{animation:none}.topbar,.gear-icon,.side-nav,.waypoint{transition:none}}
 
 #dial .sky-orb{left:var(--orb-x);top:var(--orb-y)}
+
+.map-pin{transform:translate(-50%,-11.5px)}
+.player-position,.position-key i{width:14px;height:14px;border:2px solid #fffcef;border-radius:50%;background:#285e73;box-shadow:0 0 0 1.5px #315f69,0 1px 5px #27494e45}
+.player-position{position:absolute;z-index:3;transform:translate(-50%,-50%);pointer-events:none}
+.map-legend .position-key{display:flex;align-items:center;gap:8px;font-size:12px}
+.position-key i{width:10px;height:10px}

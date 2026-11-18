@@ -4,6 +4,18 @@ export function otherLanding(id) {
  return id === 'reed' ? 'sakura' : id === 'sakura' ? 'reed' : null;
 }
 
+// Project the shared sailing route onto its two pins on the illustrated map.
+export function mapPosition(locations,id,nav){
+ const area=locations.find(place=>place.id===id);
+ if(!nav?.onBoat)return {x:area.x,y:area.y};
+ const origin=landings.reed,dx=nav.x-origin.x,dz=nav.z-origin.z;
+ if(!otherLanding(id))return {x:area.x+dx*.9,y:area.y+dz*.9};
+ const start=locations.find(place=>place.id==='reed'),end=locations.find(place=>place.id==='sakura');
+ const span=landings.sakura.x-origin.x;
+ const eastX=(end.x-start.x)/span,eastY=(end.y-start.y)/span;
+ return {x:start.x+dx*eastX-dz*eastY,y:start.y+dx*eastY+dz*eastX};
+}
+
 export function createNavigation(){
  let x=.25,z=1.6,vx=0,vz=0,ix=0,iz=0,sailing=true,paused=false,onBoat=true,heading=-.27;
  let harbor = 'reed';
