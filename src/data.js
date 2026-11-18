@@ -1,5 +1,5 @@
 export const SEASONS = ['春','夏','秋','冬'];
-export const TIMES = {day:'日间',dusk:'黄昏',night:'夜晚'};
+export const TIMES = {dawn:'清晨',day:'日间',dusk:'黄昏',night:'夜晚'};
 export const LOCATIONS = [
  {id:'reed',name:'芦眠浅湾',en:'REEDWATER',x:27,y:61,color:'#88b7a1',tag:'初次相遇的地方',description:'风穿过芦苇，木码头晒得暖暖的。岸边与小船都能垂钓。',boat:false},
  {id:'sakura',name:'落樱溪',en:'PETAL CREEK',x:40,y:30,color:'#d6a4b0',tag:'顺着花瓣往上游',description:'溪水带来落花。春天的黄昏，水下也会有一场花开。',boat:false},
@@ -59,7 +59,7 @@ const rows = [
  ['moon','星眠月灵',6,'春夏秋冬','night',true,650,'#b5aad0','当你愿意安静等候，湖也会回应你。']
 ];
 export const FISH = rows.map((r,i)=>({id:`fish-${String(i+1).padStart(2,'0')}`,location:r[0],name:r[1],stars:r[2],seasons:[...r[3]],time:r[4],boat:r[5],value:r[6],color:r[7],note:r[8],shape:i%5,length:[12+i*1.3,20+i*2.1]}));
-export function eligibleFish(state){return FISH.filter(f=>f.location===state.location&&f.seasons.includes(state.season)&&(f.time==='any'||f.time===state.time)&&(!f.boat||state.boat));}
+export function eligibleFish(state){return FISH.filter(f=>f.location===state.location&&f.seasons.includes(state.season)&&(f.time==='any'||f.time===(state.time==='dawn'?'day':state.time))&&(!f.boat||state.boat));}
 export function fishWeight(f,bait,pity=0){const base={3:65,4:27,5:7,6:1}[f.stars];const mult=bait==='star'?{3:.5,4:1.2,5:2.2,6:4}[f.stars]:bait==='petal'?{3:.7,4:1.5,5:1.6,6:1}[f.stars]:1;return base*mult*(f.stars===6?1+pity*.15:1);}
 export function chooseFish(state,random=Math.random){const pool=eligibleFish(state);if(!pool.length)return null;const legendary=pool.find(f=>f.stars===6);if(legendary&&(state.pity||0)>=11)return legendary;let n=random()*pool.reduce((s,f)=>s+fishWeight(f,state.bait,state.pity),0);return pool.find(f=>(n-=fishWeight(f,state.bait,state.pity))<0)||pool.at(-1);}
 export const ACHIEVEMENTS=[

@@ -1,13 +1,14 @@
 {
   "checks": [
-    "keyboard moves boat",
-    "stop anchors boat",
-    "stationary inputs ignored",
+    "dial tap and hold",
+    "idle fade and wake",
+    "automatic dawn and spring rollover",
+    "direct keyboard departure",
+    "menu pauses sailing",
     "return to dock",
-    "menus pause movement",
-    "touch-sized paddle controls move boat",
-    "laptop sailing button unobstructed at 1280x720"
+    "gear selection",
+    "touch joystick drag and release",
+    "casting after sailing"
   ],
-  "keyboardDistance": 2.128,
-  "mobileDistance": 2.262
+  "consoleErrors": []
 }

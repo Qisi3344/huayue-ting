@@ -13,7 +13,7 @@ async def main():
         page=await browser.new_page(viewport={'width':1440,'height':960},device_scale_factor=1)
         page.on('pageerror',lambda e:errors.append(str(e)))
         page.on('console',lambda m:errors.append(m.text) if m.type=='error' else None)
-        response=await page.goto('http://127.0.0.1:4173/',wait_until='networkidle')
+        response=await page.goto(os.environ.get('HUAYUE_URL','http://127.0.0.1:4173/'),wait_until='networkidle')
         await page.wait_for_function('window.__HUAYUE__?.ready === true',timeout=45000)
         assert await page.locator('#world').get_attribute('data-character-model')=='blender-glb'
         await page.wait_for_timeout(1200)
@@ -23,14 +23,19 @@ async def main():
         assert observed['ready'] and observed['phase']=='idle' and observed['coins']==initial['coins']
         assert initial['coins']==160
         assert await page.locator('#waypoint').is_hidden()
+        await page.locator('#dial').press('ArrowDown')
         await page.get_by_role('button',name='夏',exact=True).click()
         assert await page.evaluate('window.__HUAYUE__.getState().season')=='夏'
         await page.get_by_role('button',name='春',exact=True).click()
-        await page.locator('#timeBtn').click()
+        await page.locator('[data-time="dusk"]').click()
         assert await page.evaluate('window.__HUAYUE__.getState().time')=='dusk'
-        await page.locator('#timeBtn').click()
+        await page.locator('[data-time="night"]').click()
+        await page.locator('#closePanel').click()
+        await page.wait_for_timeout(4100)
         await page.screenshot(path=str(OUT/'02-night.png'))
-        await page.locator('#timeBtn').click()
+        await page.locator('#dial').press('ArrowDown')
+        await page.locator('[data-time="day"]').click()
+        await page.locator('#closePanel').click()
         await page.locator('[data-open="map"]').click()
         await page.screenshot(path=str(OUT/'03-map.png'))
         for location in ['sakura','falls','snow','tide','moon','reed']:
@@ -52,8 +57,10 @@ async def main():
         # Navigation achievement is actually earned by all six visits.
         travelled=await page.evaluate('window.__HUAYUE__.getState()')
         assert 'traveler' in travelled['achievements']
+        await page.locator('[data-open="map"]').click()
         await page.locator('#boatBtn').click()
         assert not await page.evaluate('window.__HUAYUE__.getState().boat')
+        await page.locator('[data-open="map"]').click()
         await page.locator('#boatBtn').click()
         assert await page.evaluate('window.__HUAYUE__.getState().boat')
         await page.locator('[data-open="shop"]').click()
@@ -73,7 +80,8 @@ async def main():
         box=await page.locator('#castBtn').bounding_box()
         await page.mouse.move(box['x']+box['width']/2,box['y']+box['height']/2)
         holding=False
-        for _ in range(90):
+        deadline=asyncio.get_running_loop().time()+65
+        while asyncio.get_running_loop().time()<deadline:
             if await page.evaluate('window.__HUAYUE__.getPhase()')=='caught':break
             value=await page.locator('#tensionMarker').evaluate('(e)=>parseFloat(e.style.left)/100')
             if value<.33 and not holding:
@@ -82,7 +90,7 @@ async def main():
                 await page.mouse.up();holding=False
             await page.wait_for_timeout(220)
         if holding:await page.mouse.up()
-        await page.wait_for_function('window.__HUAYUE__.getPhase()==="caught"',timeout=3000)
+        assert await page.evaluate('window.__HUAYUE__.getPhase()')=='caught',await page.evaluate('window.render_game_to_text()')
         await page.screenshot(path=str(OUT/'05-catch.png'))
         await page.locator('#releaseBtn').click()
         caught=await page.evaluate('window.__HUAYUE__.getState()')
@@ -101,7 +109,9 @@ async def main():
         assert len(restored['book'])==1
         assert list(restored['book'].values())[0]['note']=='今天和小狼一起听见了春天。'
         assert restored['coins']==caught['coins']
+        await page.locator('#dial').press('ArrowDown')
         await page.get_by_role('button',name='冬',exact=True).click()
+        await page.locator('#closePanel').click()
         await page.locator('[data-open="map"]').click()
         await page.locator('[data-location="snow"]').click()
         await page.screenshot(path=str(OUT/'07-winter.png'))

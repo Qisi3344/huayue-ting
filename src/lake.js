@@ -181,7 +181,7 @@ export function createLake(scene, renderer, banks) {
   scene.background=background;renderer.setClearColor(background,alpha);renderer.shadowMap.autoUpdate=shadowsEnabled;
  }
  return {tint:uniforms.tint.value,resize,update,capture,resetWake,
-  environment(sky,light,creek){uniforms.sky.value.copy(sky);uniforms.lightTint.value.copy(light);uniforms.creekVisible.value=Number(creek);lastCapture=-Infinity;},
+  environment(sky,light,creek,invalidate=true){uniforms.sky.value.copy(sky);uniforms.lightTint.value.copy(light);uniforms.creekVisible.value=Number(creek);if(invalidate)lastCapture=-Infinity;},
   dispose(){reflection.dispose();}
  };
 }

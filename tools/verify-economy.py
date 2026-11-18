@@ -7,7 +7,7 @@ async def main():
  async with async_playwright() as p:
   browser=await p.chromium.launch(executable_path=os.path.join(os.environ['LOCALAPPDATA'],'Google/Chrome/Application/chrome.exe'),headless=True,args=['--enable-webgl','--ignore-gpu-blocklist','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
   page=await browser.new_page(viewport={'width':1280,'height':900});page.on('pageerror',lambda e:errors.append(str(e)))
-  await page.goto('http://127.0.0.1:4173/',wait_until='networkidle');await page.wait_for_function('window.__HUAYUE__?.ready===true')
+  await page.goto(os.environ.get('HUAYUE_URL','http://127.0.0.1:4173/'),wait_until='networkidle');await page.wait_for_function('window.__HUAYUE__?.ready===true')
   # Explicit test fixture, not a reward or fake gameplay result.
   await page.evaluate('''()=>{let s=window.__HUAYUE__.getState();s.coins=5000;localStorage.setItem('huayue-cove-save-v1',JSON.stringify(s));}''')
   await page.reload(wait_until='networkidle');await page.wait_for_function('window.__HUAYUE__?.ready===true')

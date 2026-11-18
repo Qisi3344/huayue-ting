@@ -127,11 +127,26 @@ export async function createWorld(container,options={}) {
   subject.traverse(object=>object.layers.enable(1));
  }
  let season='春',time='day',location='reed',onBoat=true,phase='idle',disposed=false,frames=0,raf=0;
- function applyEnvironment(){const p=palettes[season];lake.tint.setHex(p.water);groundMat.color.setHex(p.ground);bankMat.color.setHex(season==='冬'?0xc4d4cb:0xa1b58e);leafMat.color.setHex(p.leaves);darkLeaf.color.setHex(p.leaves).multiplyScalar(.8);flowerMat.color.setHex(p.flowers);hillMat.color.setHex(p.hills);farHillMat.color.setHex(p.sky).lerp(new THREE.Color(p.hills),.45);particleMat.color.setHex(p.particle);let sky=p.sky;if(location==='tide'){lake.tint.setHex(season==='冬'?0xb5cecb:0x9fcac3);groundMat.color.setHex(0xdfcda6);}if(location==='moon'&&time==='night')lake.tint.setHex(0x738c9f);if(location==='snow'){groundMat.color.setHex(0xe2e8df);leafMat.color.setHex(0xbacbc2);}if(location==='sakura')trees[0].g.scale.setScalar(1.55);else trees[0].g.scale.setScalar(1.35);fallsRipple.visible=fallsGroup.visible=location==='falls';
-  const night=time==='night',dusk=time==='dusk';if(night){sky=0x697e85;lake.tint.multiplyScalar(.59);leafMat.color.multiplyScalar(.72);ambient.intensity=1.15;ambient.color.setHex(0xc0c9e7);sun.color.setHex(0xbcc9e9);sun.intensity=1.45;sun.position.set(-8,14,4);lampLight.intensity=3.2;particleMat.color.setHex(0xf0e4a5);}else{ambient.intensity=dusk?1.9:2.3;ambient.color.setHex(dusk?0xf6ddc0:0xfffde4);sun.color.setHex(dusk?0xf2cc9c:0xffeed0);sun.intensity=dusk?2.7:3.2;sun.position.set(dusk?-17:-10,dusk?11:19,10);lampLight.intensity=dusk?.6:0;if(dusk){sky=0xe7cdb8;lake.tint.lerp(new THREE.Color(0xd4c2a5),.2);}}scene.background=new THREE.Color(sky);scene.fog=new THREE.Fog(sky,27,69);renderer.setClearColor(sky);lake.environment(scene.background,sun.color,creek.visible);
+ let weather='晴',blend=null;
+ scene.background=new THREE.Color();scene.fog=new THREE.Fog(0xffffff,27,69);
+ const colors=[scene.background,lake.tint,groundMat.color,bankMat.color,leafMat.color,darkLeaf.color,flowerMat.color,hillMat.color,farHillMat.color,particleMat.color,ambient.color,sun.color];
+ const scalars=[[sun,'intensity'],[ambient,'intensity'],[lampLight,'intensity'],[scene.fog,'near'],[scene.fog,'far']];
+ function snapshot(){return {colors:colors.map(c=>c.clone()),values:scalars.map(([obj,key])=>obj[key]),sun:sun.position.clone()};}
+ function blendFrame(f){
+  const {from,to}=blend;
+  for(let i=0;i<colors.length;i++)colors[i].lerpColors(from.colors[i],to.colors[i],f);
+  scalars.forEach(([obj,key],i)=>obj[key]=THREE.MathUtils.lerp(from.values[i],to.values[i],f));
+  sun.position.lerpVectors(from.sun,to.sun,f);
+  scene.fog.color.copy(scene.background);lake.environment(scene.background,sun.color,creek.visible,false);
  }
- function setSeason(value){if(!palettes[value])return;season=value;applyEnvironment();}
- function setTime(value){if(!['day','dusk','night'].includes(value))return;time=value;applyEnvironment();}
+ function applyEnvironment(transition=false){const from=transition?snapshot():null;blend=null;const p=palettes[season];lake.tint.setHex(p.water);groundMat.color.setHex(p.ground);bankMat.color.setHex(season==='冬'?0xc4d4cb:0xa1b58e);leafMat.color.setHex(p.leaves);darkLeaf.color.setHex(p.leaves).multiplyScalar(.8);flowerMat.color.setHex(p.flowers);hillMat.color.setHex(p.hills);farHillMat.color.setHex(p.sky).lerp(new THREE.Color(p.hills),.45);particleMat.color.setHex(p.particle);let sky=p.sky;if(location==='tide'){lake.tint.setHex(season==='冬'?0xb5cecb:0x9fcac3);groundMat.color.setHex(0xdfcda6);}if(location==='moon'&&time==='night')lake.tint.setHex(0x738c9f);if(location==='snow'){groundMat.color.setHex(0xe2e8df);leafMat.color.setHex(0xbacbc2);}if(location==='sakura')trees[0].g.scale.setScalar(1.55);else trees[0].g.scale.setScalar(1.35);fallsRipple.visible=fallsGroup.visible=location==='falls';
+  const night=time==='night',dusk=time==='dusk';if(night){sky=0x697e85;lake.tint.multiplyScalar(.59);leafMat.color.multiplyScalar(.72);ambient.intensity=1.15;ambient.color.setHex(0xc0c9e7);sun.color.setHex(0xbcc9e9);sun.intensity=1.45;sun.position.set(-8,14,4);lampLight.intensity=3.2;particleMat.color.setHex(0xf0e4a5);}else{ambient.intensity=dusk?1.9:2.3;ambient.color.setHex(dusk?0xf6ddc0:0xfffde4);sun.color.setHex(dusk?0xf2cc9c:0xffeed0);sun.intensity=dusk?2.7:3.2;sun.position.set(dusk?-17:-10,dusk?11:19,10);lampLight.intensity=dusk?.6:0;if(dusk){sky=0xe7cdb8;lake.tint.lerp(new THREE.Color(0xd4c2a5),.2);}}if(time==='dawn'){sky=0xe6d9ce;sun.color.setHex(0xffd4ac);ambient.intensity=1.75;sun.intensity=2.2;sun.position.set(13,9,7);lake.tint.lerp(new THREE.Color(0xc7c3b4),.22);}
+  scene.background.setHex(sky);scene.fog.near=27;scene.fog.far=69;
+  if(weather==='薄雾'||weather==='细雨'){scene.background.lerp(new THREE.Color(0xb9c5bf),.26);scene.fog.near=weather==='薄雾'?10:20;scene.fog.far=weather==='薄雾'?38:55;sun.intensity*=.82;}
+  scene.fog.color.copy(scene.background);renderer.setClearColor(scene.background);lake.environment(scene.background,sun.color,creek.visible);
+  if(from){blend={from,to:snapshot(),start:performance.now()};blendFrame(0);}
+ }
+ function setClimate(s,t,w,immediate=false){season=s;time=t;weather=w;applyEnvironment(!immediate);}
  function setLocation(id,keepPosition=false){
   location=id;
   navigation.setHarbor(id);
@@ -156,6 +171,7 @@ export async function createWorld(container,options={}) {
  canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);canvas.addEventListener('wheel',wheel,{passive:false});
  const tipWorld=new THREE.Vector3();const clock=new THREE.Clock();let lastWorldTime=0;
  function animate(){if(disposed)return;const t=clock.getElapsedTime(),motion=reduced?0:1;const dt=Math.min(.1,t-lastWorldTime);lastWorldTime=t;const nav=navigation.step(dt);
+  if(blend){const f=Math.min(1,(performance.now()-blend.start)/4000);blendFrame(f*f*(3-2*f));if(f===1)blend=null;}
   if(navigation.reachedDestination()) options.onArrival?.(otherLanding(location));
   frames++;zoom+=(targetZoom-zoom)*.08;camera.zoom=zoom;camera.updateProjectionMatrix();target.x+=((onBoat?nav.x-.25:location==='sakura'?landing.x:0)-target.x)*.07;target.z+=((onBoat?nav.z-1.6:0)*.7-target.z)*.07;const angle=orbit+Math.sin(t*.04)*.013*motion;camera.position.set(target.x+Math.sin(angle)*21,12.8,target.z+Math.cos(angle)*21);camera.lookAt(target);
   if(waypoint && nav.sailing && !nav.paused){
@@ -168,9 +184,9 @@ export async function createWorld(container,options={}) {
   head.rotation.z=Math.sin(t*.6)*.025*motion;tailRoot.rotation.y=Math.sin(t*1.4)*.075*motion;if(modelHead)modelHead.rotation.z=Math.sin(t*.6)*.025*motion;if(modelTail)modelTail.rotation.y=Math.sin(t*1.4)*.075*motion;
   for(const r of rippleObjects){const s=1+Math.sin(t*.6+r.phase)*.08*motion;r.m.scale.setScalar(s);}
   bobber.position.y=(phase==='bite'?Math.sin(t*13)*.12:Math.sin(t*1.4)*.025)*motion+(phase==='caught'?.5:0);fishingGear.rotation.z=phase==='reeling'?-.04+Math.sin(t*4)*.025:phase==='caught'?-.21:0;
-  for(const {p,x,y,z,speed}of particles){p.visible=season!=='夏'||time==='night'||location==='sakura';if(!motion)continue;p.position.x=x+Math.sin(t*.16+z)*.8;p.position.y=season==='冬'?(y-t*speed*.2)%7+1:y+Math.sin(t*speed)*.4;p.rotation.z=t*.13+z;}
+  for(const {p,x,y,z,speed}of particles){const rain=weather==='细雨',snow=weather==='轻雪';p.visible=rain||snow||season!=='夏'||time==='night'||location==='sakura';if(!motion)continue;p.scale.set(rain?.25:1,rain?3:1,1);p.position.x=x+Math.sin(t*.16+z)*.8;p.position.y=rain||snow?THREE.MathUtils.euclideanModulo(y-t*speed*(rain?6:1),7):y+Math.sin(t*speed)*.4;p.rotation.z=rain?-.2:t*.13+z;}
   scene.updateMatrixWorld();tipWorld.copy(rodTip).applyMatrix4(fishingGear.matrixWorld);const positions=lineGeometry.attributes.position;positions.setXYZ(0,tipWorld.x,tipWorld.y,tipWorld.z);positions.setXYZ(1,bobber.position.x,bobber.position.y+.13,bobber.position.z);positions.needsUpdate=true;lineGeometry.computeBoundingSphere();lake.update(dt,t,nav,motion);lake.capture(t,camera,target);focus.render(scene,camera);if(frames%30===0)container.dataset.renderFrames=String(frames);raf=requestAnimationFrame(animate);
  }
  animate();container.dataset.sceneReady='true';options.onReady?.();
- return{ready:true,setSeason,setTime,setLocation,setBoat,setFishing,setCatchQuality,setSailing,setPaddle,setPaused,returnDock,getNavigation,trackLanding,dispose(){disposed=true;cancelAnimationFrame(raf);observer.disconnect();canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('wheel',wheel);scene.traverse(o=>{o.geometry?.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose();});lake.dispose();focus.dispose();gradient.dispose();renderer.dispose();canvas.remove();}};
+ return{ready:true,setClimate,setLocation,setBoat,setFishing,setCatchQuality,setSailing,setPaddle,setPaused,returnDock,getNavigation,trackLanding,dispose(){disposed=true;cancelAnimationFrame(raf);observer.disconnect();canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('wheel',wheel);scene.traverse(o=>{o.geometry?.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose();});lake.dispose();focus.dispose();gradient.dispose();renderer.dispose();canvas.remove();}};
 }

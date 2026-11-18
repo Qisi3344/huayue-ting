@@ -6,10 +6,11 @@ async def main():
  async with async_playwright() as p:
   browser=await p.chromium.launch(executable_path=os.path.join(os.environ['LOCALAPPDATA'],'Google/Chrome/Application/chrome.exe'),headless=True,args=['--enable-webgl','--ignore-gpu-blocklist','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
   page=await browser.new_page(viewport={'width':1440,'height':960})
-  await page.goto('http://127.0.0.1:4173/',wait_until='networkidle');await page.wait_for_function('window.__HUAYUE__?.ready===true')
+  await page.goto(os.environ.get('HUAYUE_URL','http://127.0.0.1:4173/'),wait_until='networkidle');await page.wait_for_function('window.__HUAYUE__?.ready===true')
   results=[]
   for season in ['春','夏','秋','冬']:
-   await page.get_by_role('button',name=season,exact=True).click();await page.wait_for_timeout(500)
+   await page.locator('#dial').press('ArrowDown')
+   await page.get_by_role('button',name=season,exact=True).click();await page.locator('#closePanel').click();await page.wait_for_timeout(4100)
    results.append({'season':season,'screenshotBytes':len(await page.screenshot())})
   old=await page.locator('#world').get_attribute('data-render-frames')
   await page.wait_for_timeout(1500)

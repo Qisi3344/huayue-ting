@@ -10,35 +10,27 @@
  <div id="world" aria-label="三维钓鱼场景"><div id="loading">正在把小船推入水中<span>准备三维湖面与小狼…</span></div></div>
  <div class="vignette" aria-hidden="true"></div>
  <header class="topbar">
-  <a class="wordmark" href="#" aria-label="花月汀首页"><span class="moon-mark" aria-hidden="true"></span><strong>花月汀</strong><span class="wordmark-sub">小狼的四季鱼笺</span></a>
+  <div class="dial-wrap"><button id="dial" type="button" aria-label="花月盘" aria-describedby="dialHelp"><i class="sky-orb"></i><i class="dial-speck"></i><i class="weather-mark"></i></button><span id="dialReadout" role="status" hidden></span><span id="dialHelp" class="sr-only">轻点查看，长按或按下方向键进入调节</span></div>
   <div class="top-actions"><button id="soundBtn" class="quiet" title="开启湖畔环境音" aria-label="开启湖畔环境音" aria-pressed="false">湖声 <span id="soundLabel">关</span></button><button id="walletBtn" class="wallet" title="仅供游戏内使用的虚拟花月币"><span class="coin" aria-hidden="true">✦</span><strong id="coins">160</strong><span>花月币</span></button></div>
  </header>
  <div id="waypoint" class="waypoint" hidden><span class="waypoint-arrow" aria-hidden="true"></span><span id="waypointName"></span><span id="waypointDistance"></span><button id="cancelWaypoint" type="button" aria-label="取消目的地追踪" title="取消追踪">×</button></div>
  <section class="location-block" aria-label="当前地点">
-  <div class="eyebrow">A LITTLE PLACE TO SLOW DOWN</div>
-  <h1 id="locationName">芦眠浅湾</h1><p id="locationTag">初次相遇的地方</p>
-  <div class="world-controls"><div class="season-control" role="group" aria-label="选择季节"><button data-season="春" class="selected">春</button><button data-season="夏">夏</button><button data-season="秋">秋</button><button data-season="冬">冬</button></div><button id="timeBtn" class="time-control">日间 · 晴</button></div>
-  <p class="small-note" id="boatNotice">一叶小舟，一整天的好心情。</p>
+  <h1 id="locationName"></h1><p id="locationTag"></p>
  </section>
  <nav class="side-nav" aria-label="游戏菜单">
-  <button data-open="map" class="nav-item"><span class="css-icon map-icon" aria-hidden="true"></span><span>去哪里</span><kbd>M</kbd></button>
+  <button data-open="map" class="nav-item"><span class="css-icon map-icon" aria-hidden="true"></span><span>去哪里</span></button>
   <button data-open="book" class="nav-item"><span class="css-icon book-icon" aria-hidden="true"></span><span>鱼笺册</span><small id="bookCount">0 / 36</small></button>
-  <button data-open="shop" class="nav-item"><span class="css-icon shop-icon" aria-hidden="true"></span><span>渔具铺</span><kbd>S</kbd></button>
-  <button id="boatBtn" class="nav-item"><span class="css-icon boat-icon" aria-hidden="true"></span><span id="boatLabel">小船体验</span></button>
-  <button id="sailBtn" class="nav-item"><span class="css-icon paddle-icon" aria-hidden="true"></span><span id="sailLabel">划船走走</span><kbd>WASD</kbd></button>
+  <button data-open="shop" class="nav-item"><span class="css-icon shop-icon" aria-hidden="true"></span><span>渔具铺</span></button>
  </nav>
- <div id="sailingControls" class="sailing-controls" hidden><p id="sailingHint">WASD / 方向键划船 · 点「停桨垂钓」收竿休息</p><button id="returnDockBtn" class="secondary">回到码头</button><div class="sail-pad" role="group" aria-label="划船方向"><button data-paddle="up" aria-label="向前划">↑</button><button data-paddle="left" aria-label="向左划">←</button><button data-paddle="down" aria-label="向后划">↓</button><button data-paddle="right" aria-label="向右划">→</button></div></div>
- <div id="welcomeNote" class="field-note"><span>给今天的一张便笺</span><p>别着急。<br>鱼和春天，都会慢慢来。</p><button id="closeNote" aria-label="收起便笺">×</button></div>
- <div class="scene-caption"><span class="live-dot"></span>三维卡通着色 · 可拖动湖面转动视角</div>
+ <div id="joystick" aria-hidden="true" hidden><i></i></div>
  <section class="fishing-hud" aria-label="钓鱼操作">
-  <div class="equipment"><span class="equipment-label">手里的小竿</span><button id="rodInfo">柳枝小竿</button></div>
-  <div class="main-fishing"><div class="fishing-message" id="fishingMessage" role="status" aria-live="polite">找个舒服的位置，甩出今天的第一竿。</div>
-   <div id="reelPanel" hidden><div class="reel-labels"><span>跟着鱼，轻轻收线</span><span id="reelPercent">0%</span></div><div class="tension-track"><div id="safeZone"></div><div id="tensionMarker"></div></div><div class="reel-progress"><i id="reelProgress"></i></div><small>按住收线，松开缓一缓 · 空格也可以</small></div>
-   <button id="castBtn" class="cast-button"><span id="castLabel">抛一竿</span><kbd>SPACE</kbd></button>
+  <button class="gear-icon rod-icon" id="rodInfo" aria-label="选择鱼竿"><i></i></button>
+  <div class="main-fishing"><div class="fishing-message" id="fishingMessage" role="status" aria-live="polite"></div>
+   <div id="reelPanel" hidden><div class="reel-labels"><span>跟着鱼，轻轻收线</span><span id="reelPercent">0%</span></div><div class="tension-track"><div id="safeZone"></div><div id="tensionMarker"></div></div><div class="reel-progress"><i id="reelProgress"></i></div><small>按住收线，松开缓一缓</small></div>
+   <button id="castBtn" class="cast-button"><span id="castLabel">抛一竿</span></button>
   </div>
-  <div class="equipment bait-equipment"><span class="equipment-label">今天的鱼饵</span><button id="baitInfo">谷香团 × 12</button><button id="baitCycle" class="tiny-text">换一种 ↻</button></div>
+  <button class="gear-icon bait-icon" id="baitInfo" aria-label="选择鱼饵"><i></i></button>
  </section>
- <footer class="prototype-label">可交互概念原型 <span>·</span> 不是最终美术</footer>
  <div id="toast" class="toast" role="status" hidden></div>
 </div>
 <dialog id="panel" class="panel-dialog"><button id="closePanel" class="close-button" aria-label="关闭">×</button><div id="panelContent"></div></dialog>
