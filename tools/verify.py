@@ -22,6 +22,7 @@ async def main():
         observed=json.loads(await page.evaluate('window.render_game_to_text()'))
         assert observed['ready'] and observed['phase']=='idle' and observed['coins']==initial['coins']
         assert initial['coins']==160
+        assert await page.locator('#waypoint').is_hidden()
         await page.get_by_role('button',name='夏',exact=True).click()
         assert await page.evaluate('window.__HUAYUE__.getState().season')=='夏'
         await page.get_by_role('button',name='春',exact=True).click()
@@ -35,6 +36,18 @@ async def main():
         for location in ['sakura','falls','snow','tide','moon','reed']:
             if not await page.locator('#panel').evaluate('(d)=>d.open'):await page.locator('[data-open="map"]').click()
             await page.locator(f'[data-location="{location}"]').click()
+            if location=='sakura':
+                assert await page.evaluate("window.__HUAYUE__.getState().location==='reed'")
+                assert await page.locator('#waypoint').is_visible()
+                await page.locator('#cancelWaypoint').click()
+                assert await page.locator('#waypoint').is_hidden()
+                assert await page.evaluate('window.__HUAYUE__.getNavigation().sailing')
+                await page.locator('[data-open="map"]').click()
+                await page.locator('[data-location="sakura"]').click()
+                await page.keyboard.down('ArrowRight')
+                try: await page.wait_for_function("window.__HUAYUE__.getState().location==='sakura'",timeout=90000)
+                finally: await page.keyboard.up('ArrowRight')
+            assert await page.locator('#waypoint').is_hidden()
             assert await page.evaluate('window.__HUAYUE__.getState().location')==location
         # Navigation achievement is actually earned by all six visits.
         travelled=await page.evaluate('window.__HUAYUE__.getState()')
