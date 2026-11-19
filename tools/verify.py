@@ -41,7 +41,7 @@ async def main():
         for location in ['sakura','falls','snow','tide','moon','reed']:
             if not await page.locator('#panel').evaluate('(d)=>d.open'):await page.locator('#minimap').click()
             await page.locator(f'[data-location="{location}"]').click()
-            await page.locator(f'[data-location="{location}"]').click()
+            await page.get_by_role('button',name={'sakura':'划船前往','reed':'传送'}.get(location,'搭渡船'),exact=True).click()
             if location=='sakura':
                 assert await page.evaluate("window.__HUAYUE__.getState().location==='reed'")
                 assert await page.locator('#waypoint').is_visible()
@@ -50,7 +50,7 @@ async def main():
                 assert await page.evaluate('window.__HUAYUE__.getNavigation().sailing')
                 await page.locator('#minimap').click()
                 await page.locator('[data-location="sakura"]').click()
-                await page.locator('[data-location="sakura"]').click()
+                await page.get_by_role('button',name='划船前往').click()
                 await page.keyboard.down('ArrowRight')
                 try: await page.wait_for_function("window.__HUAYUE__.getState().location==='sakura'",timeout=90000)
                 finally: await page.keyboard.up('ArrowRight')
@@ -115,7 +115,7 @@ async def main():
         await page.locator('#closePanel').click()
         await page.locator('#minimap').click()
         await page.locator('[data-location="snow"]').click()
-        await page.locator('[data-location="snow"]').click()
+        await page.get_by_role('button',name='传送',exact=True).click()
         await page.screenshot(path=str(OUT/'07-winter.png'))
         await page.set_viewport_size({'width':390,'height':844})
         await page.screenshot(path=str(OUT/'08-mobile.png'))

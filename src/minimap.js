@@ -94,3 +94,18 @@ export function drawAtlas(canvas){
   ctx.beginPath();ctx.moveTo(x-r,y);ctx.lineTo(x,y-r*1.5);ctx.lineTo(x+r,y);ctx.stroke();
  }
 }
+
+// Ink silhouettes share the atlas palette and remain legible above its scenery.
+export const markerNames={chest:'宝箱',fish:'鱼',monster:'怪物'};
+const markerArt={
+ chest:['#caa773','M4 12 Q4 6 9 6 L18 6 Q21 7 21 12 V19 H4 Z','M4 12 H21 M9 7 V12 M17 7 V12 M11 12 V15 H14 V12'],
+ fish:['#97b8a8','M3 12 Q8 3 16 9 L21 6 L20 17 L16 14 Q9 20 3 12 Z','M9 9 Q12 12 9 15 M6.7 11.2 l.3 .2'],
+ monster:['#baa7ba','M4 16 Q3 12 6 9 L5 4 L10 7 Q13 6 15 7 L20 4 L19 10 Q22 15 18 18 Q12 22 6 18 Z','M8 12 l2 1 M16 12 l-2 1 M10 16 Q12 17.5 14 16']
+};
+export function paintMarker(canvas,type){
+ const [fill,shape,details]=markerArt[type],ctx=canvas.getContext('2d');
+ canvas.width=canvas.height=72;ctx.scale(3,3);
+ ctx.lineJoin=ctx.lineCap='round';ctx.lineWidth=1.55;ctx.strokeStyle='#574a3c';ctx.fillStyle=fill;
+ const outline=new Path2D(shape);ctx.fill(outline);ctx.stroke(outline);
+ ctx.lineWidth=1.25;ctx.stroke(new Path2D(details));
+}

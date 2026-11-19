@@ -60,11 +60,12 @@ with sync_playwright() as pw:
     page.click('[data-location="falls"]')
     assert page.locator('#placeBubble').is_visible()
     assert page.evaluate("window.__HUAYUE__.getState().location==='reed'")
-    page.click('[data-location="falls"]')
+    assert page.get_by_role('button',name='传送',exact=True).is_disabled()
+    page.get_by_role('button',name='搭渡船').click()
     assert page.evaluate("firstChart!==document.querySelector('#minimapBase canvas')")
     page.click('#minimap')
     page.click('[data-location="reed"]')
-    page.click('[data-location="reed"]')
+    page.get_by_role('button',name='传送',exact=True).click()
     assert page.evaluate("firstChart===document.querySelector('#minimapBase canvas')")
     page.click('#boatBtn')
     page.keyboard.down('KeyD')
@@ -92,6 +93,30 @@ with sync_playwright() as pw:
     cdp=page.context.new_cdp_session(page)
     def touch(event,points):
         cdp.send('Input.dispatchTouchEvent',{'type':event,'touchPoints':[dict(x=x,y=y) for x,y in points]})
+    page.tap('#minimap')
+    field=page.locator('.atlas-field')
+    for kind,name,x,y in [('chest','宝箱',35,65),('fish','鱼',95,240),('monster','怪物',285,95)]:
+        field.tap(position={'x':x,'y':y})
+        page.get_by_role('button',name=name,exact=True).tap()
+        assert page.locator(f'[data-marker="{kind}"]').is_visible()
+    page.tap('[data-location="snow"]')
+    assert page.get_by_role('button',name='传送',exact=True).is_disabled()
+    page.keyboard.press('Escape')
+    assert page.locator('#panel').is_visible() and page.locator('#placeBubble').is_hidden()
+    page.tap('[data-location="snow"]')
+    page.screenshot(path=out/'23-mobile-map.png')
+    marks=page.evaluate('window.__HUAYUE__.getState().markers')
+    page.reload()
+    page.wait_for_function('window.__HUAYUE__?.ready')
+    page.tap('#minimap')
+    assert page.evaluate('window.__HUAYUE__.getState().markers')==marks
+    assert page.locator('.atlas-marker').count()==3
+    page.tap('[data-marker="fish"]')
+    page.get_by_role('button',name='移除标记').tap()
+    assert page.locator('.atlas-marker').count()==2
+    page.tap('[data-location="falls"]')
+    assert page.get_by_role('button',name='传送',exact=True).is_enabled()
+    page.tap('#closePanel')
     page.tap('#dial')
     assert page.locator('#dialReadout').is_visible()
     badge=page.locator('#dial').bounding_box()
@@ -118,7 +143,7 @@ with sync_playwright() as pw:
     page.wait_for_function("window.__HUAYUE__.getPhase()==='bite'")
     assert page.locator('#castLabel').inner_text()=='鱼上钩了 · 收线'
     assert not errors,errors
-    result={'checks':['dial tap and hold','idle fade and wake','automatic dawn and spring rollover','direct keyboard departure','menu pauses sailing','return to dock','gear selection','four north-up bearings and positions','cached maps and shore marker','persistent minimap during idle','touch joystick drag and release','casting after sailing'],'consoleErrors':errors}
+    result={'checks':['dial tap and hold','idle fade and wake','automatic dawn and spring rollover','direct keyboard departure','menu pauses sailing','return to dock','gear selection','four north-up bearings and positions','cached maps and shore marker','persistent minimap during idle','touch joystick drag and release','casting after sailing','first visit locks teleport','three persistent hand-drawn markers','marker removal and unlocked revisit'],'consoleErrors':errors}
     (out/'sailing-results.json').write_text(json.dumps(result,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(result,ensure_ascii=False))
     browser.close()

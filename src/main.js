@@ -1,4 +1,4 @@
-import {drawAtlas,createMinimap} from './minimap.js';
+import {drawAtlas,createMinimap,markerNames,paintMarker} from './minimap.js';
 import {advanceClock,restoreClock,weatherOf} from './almanac.js';
 import {bindDial,bindJoystick,bindIdle} from './lakeside-ui.js';
 import {SEASONS,TIMES,LOCATIONS,BAITS,RODS,FISH,ACHIEVEMENTS,eligibleFish,chooseFish} from './data.js';
@@ -6,9 +6,12 @@ import {mapPosition,otherLanding} from './navigation.js';
 import {drawFish} from './fish-art.js';
 const $=s=>document.querySelector(s);
 const KEY='huayue-cove-save-v1';
-const fresh=()=>({version:1,coins:160,season:'春',time:'day',location:'reed',boat:true,boatOwned:false,bait:'grain',baits:{grain:12,petal:0,star:0},rod:'willow',rods:['willow'],book:{},visited:['reed'],caughtSeasons:[],achievements:[],pity:0});
+const fresh=()=>({version:1,coins:160,season:'春',time:'day',location:'reed',boat:true,boatOwned:false,bait:'grain',baits:{grain:12,petal:0,star:0},rod:'willow',rods:['willow'],book:{},visited:['reed'],markers:[],caughtSeasons:[],achievements:[],pity:0});
 let state=fresh();
 try{const saved=JSON.parse(localStorage.getItem(KEY)||'null');if(saved?.version===1){state={...fresh(),...saved};state.coins=Math.max(0,Number(state.coins)||0);state.baits={...fresh().baits,...saved.baits};state.book=saved.book&&typeof saved.book==='object'?saved.book:{};state.rods=Array.isArray(saved.rods)?saved.rods.filter(id=>RODS.some(r=>r.id===id)):['willow'];state.rods=[...new Set(['willow',...state.rods])];if(!SEASONS.includes(state.season))state.season='春';if(!TIMES[state.time])state.time='day';if(!LOCATIONS.some(l=>l.id===state.location))state.location='reed';if(!BAITS.some(b=>b.id===state.bait))state.bait='grain';if(!state.rods.includes(state.rod))state.rod='willow';for(const k of ['visited','caughtSeasons','achievements'])if(!Array.isArray(state[k]))state[k]=[];}}catch{}
+state.visited=[...new Set(['reed',state.location,...state.visited.filter(id=>LOCATIONS.some(l=>l.id===id))])];
+state.markers=Array.isArray(state.markers)?state.markers.filter(m=>m && typeof m.type==='string' && Object.hasOwn(markerNames,m.type) &&
+ Number.isFinite(m.x)&&m.x>=0&&m.x<=100&&Number.isFinite(m.y)&&m.y>=0&&m.y<=100):[];
 restoreClock(state);
 let world=null,phase='idle',pressedBy=null,reel=0,tension=.4,fish=null,reelStart=0,lastTick=0,waitTimer=null,toastTimer=null,panelKind='map',bookFilter='all',audio=null;
 let sailing=false;
@@ -136,17 +139,24 @@ function arrive(id){
  save();
  $('#fishingMessage').textContent='';announceLocation();
 }
-function travel(id){
- if(busy())return;
- if(id===otherLanding(state.location)){
-  if(!world)return;
-  if(!state.boat){state.boat=true;world.setBoat(true);save();}
+function atFerryDock(){return !loc().boat && Boolean(world?.getNavigation().nearDock);}
+function travel(id,mode){
+ const next=LOCATIONS.find(l=>l.id===id);
+ if(!next||busy()||!world)return;
+ if(mode==='sail'){
+  if(id!==otherLanding(state.location))return;
   if(panel.open)panel.close();
-  startSailing();
-  trackDestination(id);
+  if(startSailing())trackDestination(id);
   return;
  }
- const next=LOCATIONS.find(l=>l.id===id);if(!next)return;stopSailing();state.location=id;if(next.boat)state.boat=true;if(!state.visited.includes(id))state.visited.push(id);world?.setLocation(id);world?.setBoat(state.boat);awardAchievements();save();panel.close();announceLocation();}
+ if(mode==='ferry'){
+  if(!atFerryDock()||next.routeTo||state.visited.includes(id))return;
+ }else if(mode!=='teleport'||!state.visited.includes(id))return;
+ stopSailing();state.location=id;if(next.boat)state.boat=true;
+ world.setLocation(id);world.setBoat(state.boat);
+ if(!state.visited.includes(id))state.visited.push(id);
+ awardAchievements();save();panel.close();announceLocation();
+}
 function stopSailing(keepDestination=false){endStick();if(!keepDestination)trackDestination(null);sailing=false;paddleKeys.clear();world?.setSailing(false);world?.setPaddle(0,0);renderHUD();}
 function startSailing(){
  if(!world||phase!=='idle'||panel.open||$('#catchDialog').open)return false;
@@ -195,27 +205,83 @@ function renderPanel(){
  if(panelKind==='clock')renderClock();else if(['rod','bait'].includes(panelKind))renderGear(panelKind);else if(panelKind==='map')renderMap();else if(panelKind==='shop')renderShop();else if(panelKind==='achievements')renderAchievements();else renderBook();}
 function renderMap(){
  const pos=mapPosition(LOCATIONS,state.location,world?.getNavigation());
- const hint=!state.mapHintSeen;
+ const hint=!state.atlasActionsSeen;
  content.innerHTML=`<div class="world-map" aria-label="花月水系地图">
-  <canvas id="atlasPaper" aria-hidden="true"></canvas><span class="map-name">花 月 水 系</span>
-  ${LOCATIONS.map(l=>`<button class="map-pin" data-location="${l.id}" aria-pressed="false" style="left:${l.x}%;top:${l.y}%"><i></i><span>${l.name}</span></button>`).join('')}
+  <button class="atlas-field" aria-label="在地图上标记，方向键移动位置"><canvas id="atlasPaper" aria-hidden="true"></canvas><i aria-hidden="true"></i></button>
+  <span class="map-name">花月水系</span>
+  ${LOCATIONS.map(l=>`<button class="map-pin" data-location="${l.id}" data-explored="${state.visited.includes(l.id)}" aria-label="${l.name}，${state.visited.includes(l.id)?'已探索':'尚未探索'}" aria-pressed="false" style="left:${l.x}%;top:${l.y}%"><i></i><span>${l.name}</span></button>`).join('')}
   <button id="returnDockBtn" class="player-position" style="left:${pos.x}%;top:${pos.y}%" aria-label="当前位置，返回停船处" title="当前位置 · 返回停船处"></button>
-  <div id="placeBubble" role="status" hidden></div>
-  ${hint?'<p class="atlas-hint">点选水域，再点出发。点自己的船标可返航。</p>':''}</div>`;
+  <div id="placeBubble" role="group" tabindex="-1" hidden></div>
+  ${hint?'<p class="atlas-hint">点水域查看传送，点空白处留下标记。</p>':''}</div>`;
+ const chart=content.querySelector('.world-map'),field=chart.querySelector('.atlas-field'),bubble=$('#placeBubble');
  drawAtlas($('#atlasPaper'));
- if(hint){state.mapHintSeen=true;save();}
- let selected;
- for(const pin of content.querySelectorAll('[data-location]'))pin.onclick=()=>{
-  const place=LOCATIONS.find(p=>p.id===pin.dataset.location);
-  if(selected===pin){if(place.id===state.location)panel.close();else travel(place.id);return;}
-  selected?.setAttribute('aria-pressed','false');selected=pin;pin.setAttribute('aria-pressed','true');
-  const bubble=$('#placeBubble');bubble.hidden=false;bubble.textContent=place.name+' · '+place.tag;
-  bubble.style.left=Math.max(30,Math.min(70,place.x))+'%';bubble.style.top=place.y+'%';
+ if(hint){state.atlasActionsSeen=true;save();}
+ let selected=null,cursor={x:50,y:50};
+ function dismissBubble(){
+  bubble.hidden=true;selected?.setAttribute('aria-pressed','false');
+  (selected?.isConnected?selected:field).focus({preventScroll:true});selected=null;
+ }
+ chart.onkeydown=e=>{
+  if(e.key==='Escape' && !bubble.hidden){e.preventDefault();dismissBubble();}
+ };
+ function showBubble(anchor,x,y,title,actions,note=''){
+  if(anchor!==field && selected===anchor && !bubble.hidden){dismissBubble();return;}
+  selected?.setAttribute('aria-pressed','false');selected=anchor;anchor.setAttribute('aria-pressed','true');
+  bubble.innerHTML=`<button class="atlas-dismiss" aria-label="收起气泡">×</button><strong>${title}</strong>${note?`<small>${note}</small>`:''}<div class="atlas-actions"></div>`;
+  bubble.setAttribute('aria-label',title);
+  bubble.firstElementChild.onclick=dismissBubble;
+  const row=bubble.lastElementChild;
+  for(const {label,run,icon} of actions){
+   const button=document.createElement('button');button.type='button';button.disabled=!run;
+   if(icon){const art=document.createElement('canvas');art.setAttribute('aria-hidden','true');paintMarker(art,icon);button.append(art);}
+   button.append(label);if(run)button.onclick=run;row.append(button);
+  }
+  bubble.style.setProperty('--pin-x',x+'%');bubble.style.top=y+'%';bubble.classList.toggle('below',y<40);
+  bubble.hidden=false;
+  const action=row.querySelector('button:enabled');
+  (action||bubble).focus({preventScroll:true});
+ }
+ function addMarkerPin(marker){
+  const pin=document.createElement('button'),art=document.createElement('canvas');
+  pin.type='button';pin.className='atlas-marker';pin.dataset.marker=marker.type;
+  const name=markerNames[marker.type]+'标记';
+  pin.setAttribute('aria-label',name);pin.title=name;
+  pin.style.left=marker.x+'%';pin.style.top=marker.y+'%';
+  art.setAttribute('aria-hidden','true');paintMarker(art,marker.type);pin.append(art);chart.append(pin);
+  pin.onclick=()=>showBubble(pin,marker.x,marker.y,name,[{label:'移除标记',run:()=>{
+   state.markers=state.markers.filter(m=>m!==marker);save();pin.remove();dismissBubble();
+  }}]);
+  return pin;
+ }
+ state.markers.forEach(addMarkerPin);
+ function setCursor(x,y){
+  cursor={x:Math.max(0,Math.min(100,x)),y:Math.max(0,Math.min(100,y))};
+  field.style.setProperty('--x',cursor.x+'%');field.style.setProperty('--y',cursor.y+'%');
+ }
+ field.onkeydown=e=>{
+  const step={ArrowLeft:[-2,0],ArrowRight:[2,0],ArrowUp:[0,-2],ArrowDown:[0,2]}[e.key];
+  if(step){e.preventDefault();bubble.hidden=true;setCursor(cursor.x+step[0],cursor.y+step[1]);}
+ };
+ field.onclick=e=>{
+  if(e.detail){const r=field.getBoundingClientRect();setCursor((e.clientX-r.left)*100/r.width,(e.clientY-r.top)*100/r.height);}
+  showBubble(field,cursor.x,cursor.y,'标记',Object.entries(markerNames).map(([type,label])=>({label,icon:type,run:()=>{
+   const marker={type,...cursor};state.markers.push(marker);save();
+   const pin=addMarkerPin(marker);field.setAttribute('aria-pressed','false');bubble.hidden=true;pin.focus({preventScroll:true});
+  }})));
+ };
+ for(const pin of chart.querySelectorAll('[data-location]'))pin.onclick=()=>{
+  const place=LOCATIONS.find(p=>p.id===pin.dataset.location),known=state.visited.includes(place.id);
+  const actions=[{label:'传送',run:known?()=>travel(place.id,'teleport'):null}];
+  let note=known?'':'尚未探索';
+  if(place.id===otherLanding(state.location))actions.push({label:'划船前往',run:()=>travel(place.id,'sail')});
+  else if(!known && !place.routeTo && atFerryDock())actions.push({label:'搭渡船',run:()=>travel(place.id,'ferry')});
+  else if(!known)note+=place.routeTo?' · 从芦眠浅湾划船抵达':' · 到码头搭渡船';
+  showBubble(pin,place.x,place.y,place.name,actions,note);
  };
  $('#returnDockBtn').onclick=()=>{panel.close();stopSailing();world?.returnDock();announceLocation();};
 }
 function renderBook(){const list=FISH.filter(f=>bookFilter==='all'||(bookFilter==='caught'?Boolean(state.book[f.id]):f.stars===Number(bookFilter)));content.innerHTML=heading('小狼的四季鱼笺','钓到过的每一条，都替你留下一页。放归也算相遇。','A POCKETFUL OF ENCOUNTERS','FIELD NOTES')+`<div class="book-toolbar">${[['all','全部鱼笺'],['caught','已经遇见'],['3','3 星'],['4','4 星'],['5','5 星'],['6','6 星']].map(([id,label])=>`<button class="filter ${bookFilter===id?'active':''}" data-filter="${id}">${label}</button>`).join('')}<span class="book-total">已记录 ${Object.keys(state.book).length} / ${FISH.length}</span></div><div class="fish-grid">${list.map(f=>`<button class="fish-card ${state.book[f.id]?'known':'unknown'}" data-fish="${f.id}" aria-label="${f.name}${state.book[f.id]?'，已记录':'，尚未记录'}"><canvas data-art="${f.id}" aria-hidden="true"></canvas><h3>${state.book[f.id]?f.name:'未寄来的鱼笺'}</h3><div class="stars">${stars(f.stars)}</div><p>${LOCATIONS.find(l=>l.id===f.location).name} · ${f.seasons.join(' / ')}</p></button>`).join('')}</div>${!list.length?'<p class="empty-state">册子里还空着。去抛出第一竿，它就会开始写故事。</p>':''}<div class="book-bottom"><span>未见的鱼也会留下线索，不用盲目等候。</span><button id="viewAchievements" class="secondary">看看成就印章 →</button></div>`;content.querySelectorAll('[data-art]').forEach(c=>{const f=FISH.find(x=>x.id===c.dataset.art);drawFish(c,f,Boolean(state.book[f.id]));});content.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{bookFilter=b.dataset.filter;renderBook();});content.querySelectorAll('[data-fish]').forEach(b=>b.onclick=()=>renderFish(b.dataset.fish));$('#viewAchievements').onclick=()=>{panelKind='achievements';renderAchievements();};}
-function renderFish(id){const f=FISH.find(x=>x.id===id),record=state.book[id];content.innerHTML=heading(record?f.name:'给未来的一张鱼笺','找到对的水与季节，相遇会更容易一些。','A LETTER FROM THE WATER',stars(f.stars))+`<div class="fish-detail"><canvas id="detailArt" aria-label="鱼类图鉴插画"></canvas><div><h3>${record?f.name:'还没有遇见它'}</h3><p>${record?esc(f.note):'这一页先空着，留给某一次出门。'}</p><p>出现水域：${LOCATIONS.find(l=>l.id===f.location).name}<br>季节：${f.seasons.join('、')}<br>时段：${f.time==='any'?'整天':TIMES[f.time]}${f.boat?' · 需要乘船':''}<br>${record?`相遇 ${record.count} 次 · 最大 ${record.maxLength} cm<br>初遇：${record.firstSeason}天，${LOCATIONS.find(l=>l.id===record.firstLocation)?.name||''}`:'任意鱼竿都可尝试；鱼饵只改变来访权重。'}</p>${record?'<label for="fishMemory">写一句只属于这次相遇的话</label><textarea id="fishMemory" maxlength="180" placeholder="那天风很轻，小船停在花瓣旁。"></textarea><button id="saveMemory" class="secondary" style="margin-top:10px">夹进册子里</button>':''}</div></div><div class="book-bottom"><button id="backBook" class="secondary">← 回到鱼笺册</button><button id="goHabitat" class="primary">去这片水看看</button></div>`;drawFish($('#detailArt'),f,Boolean(record));if(record){$('#fishMemory').value=record.note;$('#saveMemory').onclick=()=>{state.book[id].note=$('#fishMemory').value;save();toast('这句话已经夹进鱼笺里了。');};}$('#backBook').onclick=renderBook;$('#goHabitat').onclick=()=>travel(f.location);}
+function renderFish(id){const f=FISH.find(x=>x.id===id),record=state.book[id];content.innerHTML=heading(record?f.name:'给未来的一张鱼笺','找到对的水与季节，相遇会更容易一些。','A LETTER FROM THE WATER',stars(f.stars))+`<div class="fish-detail"><canvas id="detailArt" aria-label="鱼类图鉴插画"></canvas><div><h3>${record?f.name:'还没有遇见它'}</h3><p>${record?esc(f.note):'这一页先空着，留给某一次出门。'}</p><p>出现水域：${LOCATIONS.find(l=>l.id===f.location).name}<br>季节：${f.seasons.join('、')}<br>时段：${f.time==='any'?'整天':TIMES[f.time]}${f.boat?' · 需要乘船':''}<br>${record?`相遇 ${record.count} 次 · 最大 ${record.maxLength} cm<br>初遇：${record.firstSeason}天，${LOCATIONS.find(l=>l.id===record.firstLocation)?.name||''}`:'任意鱼竿都可尝试；鱼饵只改变来访权重。'}</p>${record?'<label for="fishMemory">写一句只属于这次相遇的话</label><textarea id="fishMemory" maxlength="180" placeholder="那天风很轻，小船停在花瓣旁。"></textarea><button id="saveMemory" class="secondary" style="margin-top:10px">夹进册子里</button>':''}</div></div><div class="book-bottom"><button id="backBook" class="secondary">← 回到鱼笺册</button><button id="goHabitat" class="primary">去这片水看看</button></div>`;drawFish($('#detailArt'),f,Boolean(record));if(record){$('#fishMemory').value=record.note;$('#saveMemory').onclick=()=>{state.book[id].note=$('#fishMemory').value;save();toast('这句话已经夹进鱼笺里了。');};}$('#backBook').onclick=renderBook;$('#goHabitat').onclick=()=>{openPanel('map');content.querySelector('[data-location="'+f.location+'"]').click();};}
 function renderAchievements(){content.innerHTML=heading('把旅途盖成小印章','慢一点也没关系。没有期限，也没有连续登录的任务。','LITTLE THINGS WORTH REMEMBERING',`${state.achievements.length} / ${ACHIEVEMENTS.length}`)+`<div class="achievements">${ACHIEVEMENTS.map((a,i)=>`<div class="achievement ${state.achievements.includes(a.id)?'done':''}"><span class="achievement-seal">${state.achievements.includes(a.id)?'✦':String(i+1).padStart(2,'0')}</span><div><h3>${a.name}</h3><p>${a.hint}<br>奖励 ${a.reward} 花月币</p></div><small>${state.achievements.includes(a.id)?'已盖章':'慢慢来'}</small></div>`).join('')}</div><div class="book-bottom"><button id="backBook" class="secondary">← 回到鱼笺册</button><span>达成时自动记下并领取奖励</span></div>`;$('#backBook').onclick=()=>{panelKind='book';renderBook();};}
 function renderShop(){content.innerHTML=heading('苇婆婆的渔具铺','花月币只在游戏里流转。买一包饵，再带一点好心情。','REEDS & LITTLE THINGS',`${state.coins} 花月币`)+`<h3 class="shop-section-title">给水下的小点心</h3>${BAITS.map(b=>`<div class="shop-row"><i class="shop-dot" style="--item:${b.color}"></i><h3>${b.name}<small>随身 ${state.baits[b.id]} 份</small></h3><p>${b.description}</p><button class="shop-buy" data-buy-bait="${b.id}" ${state.coins<b.price?'disabled':''}>${b.price} 币 / ${b.amount} 份</button></div>`).join('')}<h3 class="shop-section-title">会陪你很久的鱼竿</h3>${RODS.map(r=>`<div class="shop-row"><i class="shop-dot" style="--item:${r.color}"></i><h3>${r.name}<small>${state.rod===r.id?'正在使用':state.rods.includes(r.id)?'已经拥有':'还在橱窗里'}</small></h3><p>${r.description}</p><button class="shop-buy" data-buy-rod="${r.id}" ${state.rod===r.id||(!state.rods.includes(r.id)&&state.coins<r.price)?'disabled':''}>${state.rod===r.id?'已装备':state.rods.includes(r.id)?'换上这根':`${r.price} 花月币`}</button></div>`).join('')}<h3 class="shop-section-title">一叶小舟</h3><div class="shop-row"><i class="shop-dot" style="--item:#bc9876"></i><h3>苇叶小木舟<small>${state.boatOwned?'写上了你的名字':'店里备有体验借舟'}</small></h3><p>没有燃油，不用修理。带你去岸边够不到的月光里。</p><button id="buyBoat" class="shop-buy" ${state.boatOwned||state.coins<480?'disabled':''}>${state.boatOwned?'你的船':'480 花月币'}</button></div><p class="shop-note">没有真实货币入口。初始赠送 12 份谷香团；每日便民补给可免费领取 5 份，避免空饵卡住旅程。</p><button id="supplyBtn" class="secondary">领一份便民补给（5 份谷香团）</button>`;content.querySelectorAll('[data-buy-bait]').forEach(b=>b.onclick=()=>buyBait(b.dataset.buyBait));content.querySelectorAll('[data-buy-rod]').forEach(b=>b.onclick=()=>buyRod(b.dataset.buyRod));$('#buyBoat').onclick=()=>{if(state.boatOwned||state.coins<480)return;state.coins-=480;state.boatOwned=true;save();renderShop();toast('苇婆婆把船绳递给你：这下，它有名字的主人啦。');};$('#supplyBtn').onclick=()=>{const today=new Date().toLocaleDateString('en-CA');if(state.supplyDay===today){toast('今天的补给已经放进背包，明天再来坐坐。');return;}state.supplyDay=today;state.baits.grain+=5;save();renderShop();toast('5 份谷香团已经装进背包。');};}
 function buyBait(id){const b=BAITS.find(x=>x.id===id);if(!b||state.coins<b.price)return;state.coins-=b.price;state.baits[id]+=b.amount;equipBait(id);save();renderShop();toast(`${b.name}装好了，去水边试一试。`);}

@@ -11,7 +11,10 @@
     "cached maps and shore marker",
     "persistent minimap during idle",
     "touch joystick drag and release",
-    "casting after sailing"
+    "casting after sailing",
+    "first visit locks teleport",
+    "three persistent hand-drawn markers",
+    "marker removal and unlocked revisit"
   ],
   "consoleErrors": []
 }
