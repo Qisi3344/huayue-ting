@@ -25,10 +25,12 @@
  </nav>
  <div id="joystick" aria-hidden="true" hidden><i></i></div>
  <section class="fishing-hud" aria-label="钓鱼操作">
+  <button data-open="rod" class="gear-icon rod-icon" aria-label="换鱼竿" title="换鱼竿"><i aria-hidden="true"></i></button>
   <div class="main-fishing"><div class="fishing-message" id="fishingMessage" role="status" aria-live="polite"></div>
    <div id="reelPanel" hidden><div class="reel-labels"><span>跟着鱼，轻轻收线</span><span id="reelPercent">0%</span></div><div class="tension-track"><div id="safeZone"></div><div id="tensionMarker"></div></div><div class="reel-progress"><i id="reelProgress"></i></div><small>按住收线，松开缓一缓</small></div>
-   <button id="castBtn" class="cast-button"><span id="castLabel">抛一竿</span></button>
+   <button id="castBtn" class="cast-button" disabled><span id="castLabel">抛一竿</span></button>
   </div>
+  <button data-open="bait" class="gear-icon bait-icon" aria-label="换鱼饵" title="换鱼饵"><i aria-hidden="true"></i></button>
  </section>
  <div id="toast" class="toast" role="status" hidden></div>
 </div>

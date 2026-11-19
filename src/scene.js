@@ -136,6 +136,11 @@ export async function createWorld(container,options={}) {
  for(const side of [-1,1]){const tuft=mesh(new THREE.ConeGeometry(.13,.33,5),fur,head);tuft.position.set(side*.16,.55,.12);tuft.rotation.z=-side*.4;}
  ball(body,0,1.13,.39,.065,.065,.04,leather);rodBetween(body,[-.31,1.18,.31],[.4,.4,.42],.025,leather);box(body,.47,.44,.22,.34,.31,.19,leather,true);box(body,.47,.54,.33,.35,.1,.04,woodLight);
  const basket=new THREE.Group();boat.add(basket);basket.position.set(-.42,.66,-.93);const basketMesh=mesh(new THREE.CylinderGeometry(.25,.21,.34,12),leather,basket);basketMesh.position.y=.12;for(let i=0;i<3;i++){const ring=mesh(new THREE.TorusGeometry(.23+i*.008,.014,4,20),woodDark,basket);ring.rotation.x=Math.PI/2;ring.position.y=.02+i*.12;}
+ const baitBox=new THREE.Group(),lidHinge=new THREE.Group();wolfRoot.add(baitBox);
+ baitBox.position.set(-.47,.28,.49);box(baitBox,0,0,0,.36,.18,.24,woodDark);
+ lidHinge.position.set(0,.095,-.12);baitBox.add(lidHinge);box(lidHinge,0,0,.12,.38,.045,.25,woodLight);
+ let baitChanged=-Infinity,boxOpen=false;
+ function changeBait(){baitChanged=performance.now();boxOpen=true;lake.invalidate();}
  const fishingGear=new THREE.Group();wolfRoot.add(fishingGear);const rodTip=new THREE.Vector3(2.1,2.35,1.1);const rod=rodBetween(fishingGear,[.45,.86,.48],[rodTip.x,rodTip.y,rodTip.z],.025,woodDark);rodBetween(fishingGear,[.45,.86,.48],[.72,1.1,.57],.04,leather);
  const bobber=new THREE.Group();scene.add(bobber);bobber.position.set(3.4,0,3.5);ball(bobber,0,.04,0,.07,.13,.07,cream);ball(bobber,0,.13,0,.06,.055,.06,mat(0xc88477));rodBetween(bobber,[0,.1,0],[0,.29,0],.012,woodDark);const bobberRipple=ripple(3.4,3.5,.28,.8);
  const lineGeometry=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);const line=new THREE.Line(lineGeometry,new THREE.LineBasicMaterial({color:0xe9ecd6,transparent:true,opacity:.9}));scene.add(line);
@@ -186,7 +191,7 @@ export async function createWorld(container,options={}) {
  for(const subject of [ambient,sun,rim,dock,pier,boat,wolfRoot]){
   subject.traverse(object=>object.layers.enable(1));
  }
- let season='春',time='day',location='reed',onBoat=true,phase='idle',disposed=false,frames=0,raf=0;
+ let season='春',time='day',location='reed',onBoat=true,phaseStarted=0,disposed=false,frames=0,raf=0;
  let weather='晴',blend=null;
  scene.background=new THREE.Color();scene.fog=new THREE.Fog(0xffffff,27,69);
  const colors=[scene.fog.color,scene.background,lake.tint,groundMat.color,bankMat.color,leafMat.color,darkLeaf.color,flowerMat.color,hillMat.color,farHillMat.color,particleMat.color,ambient.color,sun.color];
@@ -256,14 +261,16 @@ export async function createWorld(container,options={}) {
   bobberRipple.position.set(bobber.position.x,-.08,bobber.position.z);
   lake.invalidate();
  }
- function setSailing(value){lake.invalidate();navigation.setSailing(value);fishingGear.visible=!value;bobber.visible=!value;bobberRipple.visible=!value;line.visible=!value;}
+ function setSailing(value){lake.invalidate();navigation.setSailing(value);fishingGear.visible=!value;}
  function setPaddle(x,z){navigation.setInput(x,z);}
  function setPaused(value){navigation.setPaused(value);}
  function returnDock(){navigation.reset();lake.resetWake();setSailing(false);}
  function getNavigation(){return navigation.snapshot();}
  let waypoint=null;
  function trackLanding(id){waypoint=landings[id] || null;}
- function setFishing(value){if(phase!==value)lake.invalidate();phase=value;}
+ function setFishing(next){
+  phaseStarted=performance.now();if(next==='cast')boxOpen=false;lake.invalidate();
+ }
  function setCatchQuality(stars){particleMat.color.setHex(stars>=5?0xf8e4a9:palettes[season].particle);}
  function resize(){const w=container.clientWidth||1440,h=container.clientHeight||960;const ratio=Math.min(devicePixelRatio,w<=650?1.25:1.75);renderer.setPixelRatio(ratio);renderer.setSize(w,h);focus.resize(w,h,ratio);lake.resize(w,h);const view=h>w?14:15.5;camera.left=-view*w/h/2;camera.right=view*w/h/2;camera.top=view/2;camera.bottom=-view/2;camera.updateProjectionMatrix();}
  const observer=new ResizeObserver(resize);observer.observe(container);resize();applyEnvironment();
@@ -276,7 +283,7 @@ export async function createWorld(container,options={}) {
  const move=e=>{if(dragging)orbit=THREE.MathUtils.clamp(startOrbit-(e.clientX-startX)*.003,.12,.94);};
  const up=e=>{
   const tapped=dragging && e.type==='pointerup' && Math.hypot(e.clientX-startX,e.clientY-startY)<6;dragging=false;
-  if(!tapped||phase!=='idle')return;
+  if(!tapped||options.getFishingPhase()!=='idle')return;
   const rect=canvas.getBoundingClientRect();
   pointer.set((e.clientX-rect.left)/rect.width*2-1,1-(e.clientY-rect.top)/rect.height*2);
   raycaster.setFromCamera(pointer,camera);
@@ -303,10 +310,25 @@ export async function createWorld(container,options={}) {
   if(onBoat){boatFrame.position.set(nav.x,0,nav.z);boatFrame.rotation.y=nav.heading;boat.position.y=.02+Math.sin(t*1.1)*.035*motion;boat.rotation.z=Math.sin(t*.9)*.012*motion;paddle.rotation.z=nav.sailing&&nav.speed>.1?Math.sin(t*5)*.2:0;}
   head.rotation.z=Math.sin(t*.6)*.025*motion;tailRoot.rotation.y=Math.sin(t*1.4)*.075*motion;if(modelHead)modelHead.rotation.z=Math.sin(t*.6)*.025*motion;if(modelTail)modelTail.rotation.y=Math.sin(t*1.4)*.075*motion;
   for(const r of rippleObjects){const s=1+Math.sin(t*.6+r.phase)*.08*motion;r.m.scale.setScalar(s);}
-  bobber.position.y=(phase==='bite'?Math.sin(t*13)*.12:Math.sin(t*1.4)*.025)*motion+(phase==='caught'?.5:0);fishingGear.rotation.z=phase==='reeling'?-.04+Math.sin(t*4)*.025:phase==='caught'?-.21:0;
+  const phase=options.getFishingPhase();
+  const nod=Math.min(1,(performance.now()-baitChanged)/780);
+  (modelHead||head).rotation.x=phase==='idle'?Math.sin(Math.PI*nod)*.19*motion:0;
+  const lidAngle=boxOpen?-1.45:0;
+  lidHinge.rotation.x=motion?THREE.MathUtils.damp(lidHinge.rotation.x,lidAngle,14,dt):lidAngle;
+  const flight=phase==='cast'?Math.min(1,(performance.now()-phaseStarted)/420):1;
+  bobber.visible=bobberRipple.visible=line.visible=phase!=='idle'&&phase!=='result';
+  bobberRipple.visible=bobber.visible && flight===1;
+  bobber.position.copy(bobberRipple.position);
+  bobber.position.y=phase==='bite'?-.26+.055*Math.sin(t*12)*motion:Math.sin(t*1.4)*.025*motion;
+  if(flight<1 && motion){
+   floatWorld.copy(rodTip);fishingGear.localToWorld(floatWorld);bobber.parent.worldToLocal(floatWorld);
+   bobber.position.lerp(floatWorld,1-flight);bobber.position.y+=2*flight*(1-flight);
+  }
+  if(phase==='bite')bobberRipple.scale.setScalar(1.4+.2*Math.sin(t*6)*motion);
+  fishingGear.rotation.z=phase==='cast'?-.48*(1-flight)*motion:phase==='reel'?-.04+Math.sin(t*4)*.025:phase==='result'?-.21:0;
   for(const {p,x,y,z,speed}of particles){const rain=weather==='细雨',snow=weather==='轻雪';p.visible=rain||snow||season!=='夏'||time==='night'||location===creekPlace.id;if(!motion)continue;p.scale.set(rain?.25:1,rain?3:1,1);p.position.x=x+Math.sin(t*.16+z)*.8;p.position.y=rain||snow?THREE.MathUtils.euclideanModulo(y-t*speed*(rain?6:1),7):y+Math.sin(t*speed)*.4;p.rotation.z=rain?-.2:t*.13+z;}
   scene.updateMatrixWorld();tipWorld.copy(rodTip).applyMatrix4(fishingGear.matrixWorld);const positions=lineGeometry.attributes.position;positions.setXYZ(0,tipWorld.x,tipWorld.y,tipWorld.z);floatWorld.set(0,.13,0).applyMatrix4(bobber.matrixWorld);positions.setXYZ(1,floatWorld.x,floatWorld.y,floatWorld.z);positions.needsUpdate=true;lineGeometry.computeBoundingSphere();lake.update(dt,t,nav,motion);lake.capture(t,camera,target,nav,Boolean(blend));focus.render(scene,camera);if(frames%30===0)container.dataset.renderFrames=String(frames);raf=requestAnimationFrame(animate);
  }
  animate();container.dataset.sceneReady='true';options.onReady?.();
- return{ready:true,setClimate,setLocation,setBoat,setFishing,setCatchQuality,setSailing,setPaddle,setPaused,returnDock,getNavigation,trackLanding,dispose(){disposed=true;cancelAnimationFrame(raf);observer.disconnect();canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('wheel',wheel);scene.traverse(o=>{o.geometry?.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose();});lake.dispose();focus.dispose();gradient.dispose();renderer.dispose();canvas.remove();}};
+ return{ready:true,setClimate,setLocation,setBoat,setFishing,setCatchQuality,setSailing,setPaddle,setPaused,returnDock,getNavigation,trackLanding,changeBait,dispose(){disposed=true;cancelAnimationFrame(raf);observer.disconnect();canvas.removeEventListener('pointerdown',down);canvas.removeEventListener('pointermove',move);canvas.removeEventListener('pointerup',up);canvas.removeEventListener('pointercancel',up);canvas.removeEventListener('wheel',wheel);scene.traverse(o=>{o.geometry?.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material?.dispose();});lake.dispose();focus.dispose();gradient.dispose();renderer.dispose();canvas.remove();}};
 }

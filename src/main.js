@@ -10,7 +10,7 @@ const fresh=()=>({version:1,coins:160,season:'春',time:'day',location:'reed',bo
 let state=fresh();
 try{const saved=JSON.parse(localStorage.getItem(KEY)||'null');if(saved?.version===1){state={...fresh(),...saved};state.coins=Math.max(0,Number(state.coins)||0);state.baits={...fresh().baits,...saved.baits};state.book=saved.book&&typeof saved.book==='object'?saved.book:{};state.rods=Array.isArray(saved.rods)?saved.rods.filter(id=>RODS.some(r=>r.id===id)):['willow'];state.rods=[...new Set(['willow',...state.rods])];if(!SEASONS.includes(state.season))state.season='春';if(!TIMES[state.time])state.time='day';if(!LOCATIONS.some(l=>l.id===state.location))state.location='reed';if(!BAITS.some(b=>b.id===state.bait))state.bait='grain';if(!state.rods.includes(state.rod))state.rod='willow';for(const k of ['visited','caughtSeasons','achievements'])if(!Array.isArray(state[k]))state[k]=[];}}catch{}
 restoreClock(state);
-let world=null,phase='idle',held=false,reel=0,tension=.4,fish=null,reelStart=0,lastTick=0,waitTimer=null,toastTimer=null,panelKind='map',bookFilter='all',settled=false,audio=null;
+let world=null,phase='idle',pressedBy=null,reel=0,tension=.4,fish=null,reelStart=0,lastTick=0,waitTimer=null,toastTimer=null,panelKind='map',bookFilter='all',audio=null;
 let sailing=false;
 const paddleKeys=new Set();
 const panel=$('#panel');const content=$('#panelContent');
@@ -29,13 +29,50 @@ function renderHUD(){
   coins.textContent=state.coins;
  }
  $('#locationName').textContent=loc().name;$('#locationTag').textContent=loc().tag;
+ const rodButton=$('[data-open="rod"]'),baitButton=$('[data-open="bait"]');
+ rodButton.title='换鱼竿 · '+RODS.find(r=>r.id===state.rod).name;
+ baitButton.title='换鱼饵 · '+BAITS.find(b=>b.id===state.bait).name+' × '+state.baits[state.bait];
+ for(const button of [rodButton,baitButton])button.setAttribute('aria-label',button.title);
  const dial=$('#dial');dial.dataset.season=state.season;dial.dataset.time=state.time;dial.dataset.weather=weatherOf(state);
  dial.setAttribute('aria-label','花月盘，'+describeSky());
  if(!$('#dialReadout').hidden)$('#dialReadout').textContent=describeSky();
  $('#game').classList.toggle('is-sailing',sailing);
 }
-function setPhase(next){phase=next;$('#game').dataset.phase=next;world?.setFishing(next);$('#reelPanel').hidden=next!=='reeling';$('#castBtn').disabled=next==='waiting'||next==='caught';const labels={idle:'抛一竿',waiting:'等鱼来',bite:'鱼上钩了 · 收线',reeling:'按住收线',caught:'把相遇记下来'};$('#castLabel').textContent=labels[next];}
-function idle(message=''){clearTimeout(waitTimer);held=false;fish=null;world?.setCatchQuality(0);setPhase('idle');$('#fishingMessage').textContent='';if(message)toast(message);}
+const fishingPhases={
+ idle:{next:['cast'],label:'抛一竿',message:''},
+ cast:{next:['wait','idle'],label:'收竿',message:'抛出鱼线…'},
+ wait:{next:['bite','idle'],label:'收竿',message:'看着浮漂，等一等。'},
+ bite:{next:['reel'],label:'鱼上钩了 · 收线',message:'浮漂沉下去了！按住收线。'},
+ reel:{next:['result'],label:'按住收线',message:'按住收线，松开缓一缓，让张力留在绿色里。'},
+ result:{next:['idle'],label:'把相遇记下来',message:''}
+};
+const castButton=$('#castBtn');
+const idleControls=document.querySelectorAll('[data-open],#minimap,#dial,#boatBtn,[data-tab]');
+function renderFishing(){
+ const {label,message}=fishingPhases[phase];
+ $('#game').dataset.phase=phase;
+ $('#reelPanel').hidden=phase!=='reel';
+ $('#castLabel').textContent=label;
+ $('#fishingMessage').textContent=message;
+ castButton.disabled=!world||phase==='result';
+ for(const control of idleControls)control.disabled=phase!=='idle';
+}
+function setPhase(next){
+ if(!fishingPhases[phase].next.includes(next))return false;
+ clearTimeout(waitTimer);
+ phase=next;world?.setFishing(next);renderFishing();
+ if(next==='cast')waitTimer=setTimeout(()=>setPhase('wait'),420);
+ if(next==='wait')waitTimer=setTimeout(()=>setPhase('bite'),2000+Math.random()*1400);
+ if(next==='bite'){
+  chime();
+  if(!matchMedia('(prefers-reduced-motion: reduce)').matches)navigator.vibrate?.(35);
+ }
+ return true;
+}
+function idle(message=''){
+ if(!setPhase('idle'))return;
+ fish=null;world?.setCatchQuality(0);if(message)toast(message);
+}
 function busy(){if(phase!=='idle'){toast('先把这一竿好好收回来吧。');return true;}return false;}
 function describeSky(){return [state.season,TIMES[state.time],weatherOf(state)].join(' · ');}
 function applySky(){world?.setClimate(state.season,state.time,weatherOf(state));}
@@ -59,12 +96,16 @@ function renderClock(){
  $('#soundBtn').onclick=toggleAudio;
  $('#resumeClock').onclick=()=>{state.clockHeld=false;save();panel.close();};
 }
+function equipBait(id){
+ if(state.bait!==id)world?.changeBait();
+ state.bait=id;
+}
 function renderGear(kind){
  const rod=kind==='rod';
  content.innerHTML='<h2>'+ (rod?'随身鱼竿':'随身鱼饵')+'</h2><div class="kit-choices">'+
  (rod?RODS.filter(r=>state.rods.includes(r.id)):BAITS).map(item=>choice('equip',item.id,item.name+(rod?'':' × '+state.baits[item.id]),state[kind]===item.id,!rod&&!state.baits[item.id])).join('')+
  '</div><button id="visitShop" class="secondary">去渔具铺</button>';
- content.querySelectorAll('[data-equip]').forEach(b=>b.onclick=()=>{state[kind]=b.dataset.equip;save();panel.close();});
+ content.querySelectorAll('[data-equip]').forEach(b=>b.onclick=()=>{if(phase!=='idle')return;if(rod)state.rod=b.dataset.equip;else equipBait(b.dataset.equip);save();panel.close();});
  $('#visitShop').onclick=()=>openPanel('shop');
 }
 function boatChange(){if(busy()||!world?.getNavigation().nearDock)return;if(loc().boat&&state.boat){toast('湖心没有码头，先在地图上选一处岸边。');return;}stopSailing();world?.returnDock();state.boat=!state.boat;world?.setBoat(state.boat);save();toast(state.boat?'推开小船，沿着水去看看。':'靠岸了。木码头还是暖暖的。');}
@@ -117,18 +158,34 @@ function updatePaddles(){if(!sailing||panel.open||$('#catchDialog').open){world?
 function awardAchievements(){const newOnes=ACHIEVEMENTS.filter(a=>!state.achievements.includes(a.id)&&a.test(state));for(const a of newOnes){state.achievements.push(a.id);state.coins+=a.reward;}if(newOnes.length)setTimeout(()=>toast(`新印章：${newOnes.map(a=>a.name).join('、')} · +${newOnes.reduce((s,a)=>s+a.reward,0)} 花月币`),500);}
 function cast(){
  if(panel.open||$('#catchDialog').open)return;
- if(phase==='bite'){beginReel();return;}
  if(phase!=='idle')return;
- if(sailing){stopSailing();toast('收起船桨，轻轻把鱼竿放进水里。');}
  if(!state.baits[state.bait]){toast('鱼饵用完了，去渔具铺补一点，或换一种随身的饵。');openPanel('shop');return;}
  fish=chooseFish(state);if(!fish){toast('这会儿的水下很安静。换个时段、季节，或者划船去看看吧。');return;}
- setPhase('waiting');$('#fishingMessage').textContent='浮漂轻轻晃，风也替你等了一会儿。';
- waitTimer=setTimeout(()=>{setPhase('bite');$('#fishingMessage').textContent='扑通——有小家伙来访！不着急，点一下开始收线。';chime();},2000+Math.random()*1400);
+ stopSailing();
+ setPhase('cast');
 }
-function beginReel(){if(phase!=='bite')return;setPhase('reeling');reel=0;tension=.4;reelStart=performance.now();lastTick=reelStart;$('#fishingMessage').textContent='按住收线，松开降张力。让小竖线留在绿色里。';requestAnimationFrame(reelTick);}
-function reelTick(now){if(phase!=='reeling')return;const dt=Math.min(.25,(now-lastTick)/1000);lastTick=now;const rod=RODS.find(r=>r.id===state.rod);tension=Math.max(.03,Math.min(.97,tension+dt*(held?.29:-.19)+Math.sin((now-reelStart)/670)*dt*.06));const safe=tension>=.22-rod.bonus*.25&&tension<=.72+rod.bonus*.25;reel=Math.max(0,reel+dt*(safe?.16+rod.bonus*.09:-.018));$('#tensionMarker').style.left=`${tension*100}%`;$('#safeZone').style.left=`${(.22-rod.bonus*.25)*100}%`;$('#safeZone').style.width=`${(.5+rod.bonus*.5)*100}%`;$('#reelProgress').style.width=`${Math.min(1,reel)*100}%`;$('#reelPercent').textContent=`${Math.round(Math.min(1,reel)*100)}%`;if(reel>=1){finishCatch();return;}requestAnimationFrame(reelTick);}
-function finishCatch(){held=false;setPhase('caught');world?.setCatchQuality(fish.stars);const isNew=!state.book[fish.id];const length=Number((fish.length[0]+Math.random()*(fish.length[1]-fish.length[0])).toFixed(1));fish={...fish,caughtLength:length,isNew};settled=false;$('#catchEyebrow').textContent=isNew?'初次相遇 · 鱼笺将新增一页':'老朋友，也值得好好打个招呼';$('#catchName').textContent=fish.name;$('#catchStars').textContent=stars(fish.stars);$('#catchDetail').textContent=`${length} cm · ${state.season} · ${TIMES[state.time]} · ${loc().name}`;$('#catchNote').textContent=fish.note;$('#releaseValue').textContent=`观察酬金 +${Math.round(fish.value*.75)} 花月币${isNew?' · 初遇另加 35':''}`;$('#sellValue').textContent=`交换 +${fish.value} 花月币${isNew?' · 初遇另加 35':''}`;drawFish($('#catchArt'),fish);$('#catchDialog').showModal();chime(true);}
-function settleCatch(release){if(settled||!fish)return;settled=true;const old=state.book[fish.id];state.baits[state.bait]=Math.max(0,state.baits[state.bait]-1);state.book[fish.id]={count:(old?.count||0)+1,maxLength:Math.max(old?.maxLength||0,fish.caughtLength),firstSeason:old?.firstSeason||state.season,firstLocation:old?.firstLocation||state.location,note:old?.note||''};state.coins+=(release?Math.round(fish.value*.75):fish.value)+(fish.isNew?35:0);if(!state.caughtSeasons.includes(state.season))state.caughtSeasons.push(state.season);if(eligibleFish(state).some(f=>f.stars===6))state.pity=fish.stars===6?0:(state.pity||0)+1;awardAchievements();save();$('#catchDialog').close();idle(release?'记下这次相遇。小鱼摇摇尾巴，回到湖里了。':'鱼篓里又多了一位朋友，继续去逛逛吧。');}
+function beginReel(){
+ if(!setPhase('reel'))return;
+ reel=0;tension=.4;reelStart=performance.now();lastTick=reelStart;
+ $('#reelPercent').textContent='0%';$('#reelProgress').style.width='0%';
+ requestAnimationFrame(reelTick);}
+function reelTick(now){
+ if(phase!=='reel')return;
+ const dt=Math.min(.25,(now-lastTick)/1000);lastTick=now;
+ const rod=RODS.find(r=>r.id===state.rod);
+ const pull=pressedBy!==null ? .29 : -.19;
+ tension=Math.max(.03,Math.min(.97,tension+dt*(pull+Math.sin((now-reelStart)/670)*.06)));
+ const low=.22-rod.bonus*.25,high=.72+rod.bonus*.25;
+ const safe=tension>=low && tension<=high;
+ reel=Math.max(0,Math.min(1,reel+dt*(safe ? .16+rod.bonus*.09 : -.018)));
+ $('#tensionMarker').style.left=tension*100+'%';
+ $('#safeZone').style.left=low*100+'%';$('#safeZone').style.width=(high-low)*100+'%';
+ $('#reelProgress').style.width=reel*100+'%';$('#reelPercent').textContent=Math.round(reel*100)+'%';
+ if(reel===1)finishCatch();
+ else requestAnimationFrame(reelTick);
+}
+function finishCatch(){if(!setPhase('result'))return;pressedBy=null;world?.setCatchQuality(fish.stars);const isNew=!state.book[fish.id];const length=Number((fish.length[0]+Math.random()*(fish.length[1]-fish.length[0])).toFixed(1));fish={...fish,caughtLength:length,isNew};$('#catchEyebrow').textContent=isNew?'初次相遇 · 鱼笺将新增一页':'老朋友，也值得好好打个招呼';$('#catchName').textContent=fish.name;$('#catchStars').textContent=stars(fish.stars);$('#catchDetail').textContent=`${length} cm · ${state.season} · ${TIMES[state.time]} · ${loc().name}`;$('#catchNote').textContent=fish.note;$('#releaseValue').textContent=`观察酬金 +${Math.round(fish.value*.75)} 花月币${isNew?' · 初遇另加 35':''}`;$('#sellValue').textContent=`交换 +${fish.value} 花月币${isNew?' · 初遇另加 35':''}`;drawFish($('#catchArt'),fish);$('#catchDialog').showModal();chime(true);}
+function settleCatch(release){if(phase!=='result'||!fish)return;const old=state.book[fish.id];state.baits[state.bait]=Math.max(0,state.baits[state.bait]-1);state.book[fish.id]={count:(old?.count||0)+1,maxLength:Math.max(old?.maxLength||0,fish.caughtLength),firstSeason:old?.firstSeason||state.season,firstLocation:old?.firstLocation||state.location,note:old?.note||''};state.coins+=(release?Math.round(fish.value*.75):fish.value)+(fish.isNew?35:0);if(!state.caughtSeasons.includes(state.season))state.caughtSeasons.push(state.season);if(eligibleFish(state).some(f=>f.stars===6))state.pity=fish.stars===6?0:(state.pity||0)+1;awardAchievements();save();$('#catchDialog').close();idle(release?'记下这次相遇。小鱼摇摇尾巴，回到湖里了。':'鱼篓里又多了一位朋友，继续去逛逛吧。');}
 function heading(title,sub,en,chapter=''){return `<div class="panel-heading"><div><h2>${title}</h2><p>${sub}</p></div><span class="chapter">${chapter}</span></div>`;}
 function openPanel(kind){if(busy())return;if(kind==='bag')kind='book';endStick();paddleKeys.clear();world?.setPaused(true);panelKind=kind;renderPanel();if(!panel.open)panel.showModal();}
 function renderPanel(){
@@ -161,15 +218,29 @@ function renderBook(){const list=FISH.filter(f=>bookFilter==='all'||(bookFilter=
 function renderFish(id){const f=FISH.find(x=>x.id===id),record=state.book[id];content.innerHTML=heading(record?f.name:'给未来的一张鱼笺','找到对的水与季节，相遇会更容易一些。','A LETTER FROM THE WATER',stars(f.stars))+`<div class="fish-detail"><canvas id="detailArt" aria-label="鱼类图鉴插画"></canvas><div><h3>${record?f.name:'还没有遇见它'}</h3><p>${record?esc(f.note):'这一页先空着，留给某一次出门。'}</p><p>出现水域：${LOCATIONS.find(l=>l.id===f.location).name}<br>季节：${f.seasons.join('、')}<br>时段：${f.time==='any'?'整天':TIMES[f.time]}${f.boat?' · 需要乘船':''}<br>${record?`相遇 ${record.count} 次 · 最大 ${record.maxLength} cm<br>初遇：${record.firstSeason}天，${LOCATIONS.find(l=>l.id===record.firstLocation)?.name||''}`:'任意鱼竿都可尝试；鱼饵只改变来访权重。'}</p>${record?'<label for="fishMemory">写一句只属于这次相遇的话</label><textarea id="fishMemory" maxlength="180" placeholder="那天风很轻，小船停在花瓣旁。"></textarea><button id="saveMemory" class="secondary" style="margin-top:10px">夹进册子里</button>':''}</div></div><div class="book-bottom"><button id="backBook" class="secondary">← 回到鱼笺册</button><button id="goHabitat" class="primary">去这片水看看</button></div>`;drawFish($('#detailArt'),f,Boolean(record));if(record){$('#fishMemory').value=record.note;$('#saveMemory').onclick=()=>{state.book[id].note=$('#fishMemory').value;save();toast('这句话已经夹进鱼笺里了。');};}$('#backBook').onclick=renderBook;$('#goHabitat').onclick=()=>travel(f.location);}
 function renderAchievements(){content.innerHTML=heading('把旅途盖成小印章','慢一点也没关系。没有期限，也没有连续登录的任务。','LITTLE THINGS WORTH REMEMBERING',`${state.achievements.length} / ${ACHIEVEMENTS.length}`)+`<div class="achievements">${ACHIEVEMENTS.map((a,i)=>`<div class="achievement ${state.achievements.includes(a.id)?'done':''}"><span class="achievement-seal">${state.achievements.includes(a.id)?'✦':String(i+1).padStart(2,'0')}</span><div><h3>${a.name}</h3><p>${a.hint}<br>奖励 ${a.reward} 花月币</p></div><small>${state.achievements.includes(a.id)?'已盖章':'慢慢来'}</small></div>`).join('')}</div><div class="book-bottom"><button id="backBook" class="secondary">← 回到鱼笺册</button><span>达成时自动记下并领取奖励</span></div>`;$('#backBook').onclick=()=>{panelKind='book';renderBook();};}
 function renderShop(){content.innerHTML=heading('苇婆婆的渔具铺','花月币只在游戏里流转。买一包饵，再带一点好心情。','REEDS & LITTLE THINGS',`${state.coins} 花月币`)+`<h3 class="shop-section-title">给水下的小点心</h3>${BAITS.map(b=>`<div class="shop-row"><i class="shop-dot" style="--item:${b.color}"></i><h3>${b.name}<small>随身 ${state.baits[b.id]} 份</small></h3><p>${b.description}</p><button class="shop-buy" data-buy-bait="${b.id}" ${state.coins<b.price?'disabled':''}>${b.price} 币 / ${b.amount} 份</button></div>`).join('')}<h3 class="shop-section-title">会陪你很久的鱼竿</h3>${RODS.map(r=>`<div class="shop-row"><i class="shop-dot" style="--item:${r.color}"></i><h3>${r.name}<small>${state.rod===r.id?'正在使用':state.rods.includes(r.id)?'已经拥有':'还在橱窗里'}</small></h3><p>${r.description}</p><button class="shop-buy" data-buy-rod="${r.id}" ${state.rod===r.id||(!state.rods.includes(r.id)&&state.coins<r.price)?'disabled':''}>${state.rod===r.id?'已装备':state.rods.includes(r.id)?'换上这根':`${r.price} 花月币`}</button></div>`).join('')}<h3 class="shop-section-title">一叶小舟</h3><div class="shop-row"><i class="shop-dot" style="--item:#bc9876"></i><h3>苇叶小木舟<small>${state.boatOwned?'写上了你的名字':'店里备有体验借舟'}</small></h3><p>没有燃油，不用修理。带你去岸边够不到的月光里。</p><button id="buyBoat" class="shop-buy" ${state.boatOwned||state.coins<480?'disabled':''}>${state.boatOwned?'你的船':'480 花月币'}</button></div><p class="shop-note">没有真实货币入口。初始赠送 12 份谷香团；每日便民补给可免费领取 5 份，避免空饵卡住旅程。</p><button id="supplyBtn" class="secondary">领一份便民补给（5 份谷香团）</button>`;content.querySelectorAll('[data-buy-bait]').forEach(b=>b.onclick=()=>buyBait(b.dataset.buyBait));content.querySelectorAll('[data-buy-rod]').forEach(b=>b.onclick=()=>buyRod(b.dataset.buyRod));$('#buyBoat').onclick=()=>{if(state.boatOwned||state.coins<480)return;state.coins-=480;state.boatOwned=true;save();renderShop();toast('苇婆婆把船绳递给你：这下，它有名字的主人啦。');};$('#supplyBtn').onclick=()=>{const today=new Date().toLocaleDateString('en-CA');if(state.supplyDay===today){toast('今天的补给已经放进背包，明天再来坐坐。');return;}state.supplyDay=today;state.baits.grain+=5;save();renderShop();toast('5 份谷香团已经装进背包。');};}
-function buyBait(id){const b=BAITS.find(x=>x.id===id);if(!b||state.coins<b.price)return;state.coins-=b.price;state.baits[id]+=b.amount;state.bait=id;save();renderShop();toast(`${b.name}装好了，去水边试一试。`);}
+function buyBait(id){const b=BAITS.find(x=>x.id===id);if(!b||state.coins<b.price)return;state.coins-=b.price;state.baits[id]+=b.amount;equipBait(id);save();renderShop();toast(`${b.name}装好了，去水边试一试。`);}
 function buyRod(id){const r=RODS.find(x=>x.id===id);if(!r)return;if(!state.rods.includes(id)){if(state.coins<r.price)return;state.coins-=r.price;state.rods.push(id);}state.rod=id;save();renderShop();toast(`换上${r.name}，下一竿会更稳一些。`);}
 function chime(caught=false){if(!audio)return;const now=audio.ctx.currentTime;for(const [i,freq]of(caught?[523,659,784]:[659,880]).entries()){const o=audio.ctx.createOscillator(),g=audio.ctx.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0,now+i*.1);g.gain.linearRampToValueAtTime(.035,now+i*.1+.025);g.gain.exponentialRampToValueAtTime(.0001,now+i*.1+.7);o.connect(g).connect(audio.ctx.destination);o.start(now+i*.1);o.stop(now+i*.1+.8);}}
 async function toggleAudio(event){const button=event.currentTarget;button.disabled=true;try{if(audio){await audio.ctx.close();audio=null;button.querySelector('span').textContent='关';button.setAttribute('aria-pressed','false');button.setAttribute('aria-label','开启湖畔环境音');return;}try{const ctx=new(window.AudioContext||window.webkitAudioContext)();await ctx.resume();const buffer=ctx.createBuffer(1,ctx.sampleRate*4,ctx.sampleRate);const data=buffer.getChannelData(0);let v=0;for(let i=0;i<data.length;i++){v=(v+.02*(Math.random()*2-1))/1.02;data[i]=v*3;}const src=ctx.createBufferSource();src.buffer=buffer;src.loop=true;const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=780;const g=ctx.createGain();g.gain.value=.11;src.connect(filter).connect(g).connect(ctx.destination);src.start();audio={ctx};button.querySelector('span').textContent='开';button.setAttribute('aria-pressed','true');button.setAttribute('aria-label','关闭湖畔环境音');chime();}catch{toast('浏览器这次没有打开声音，安静的湖边也很好。');}}finally{button.disabled=false;}}
-$('#castBtn').addEventListener('pointerdown',e=>{if(phase==='bite'){beginReel();held=true;}else if(phase==='reeling'){held=true;}else cast();$('#castBtn').setPointerCapture?.(e.pointerId);});
-for(const event of ['pointerup','pointercancel','lostpointercapture'])$('#castBtn').addEventListener(event,()=>held=false);
-window.addEventListener('blur',()=>{held=false;paddleKeys.clear();world?.setPaddle(0,0);});
-window.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||panel.open||$('#catchDialog').open||e.defaultPrevented)return;const movement=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'];if(movement.includes(e.code)){e.preventDefault();if((sailing||!e.repeat)&&startSailing()){paddleKeys.add(e.code);updatePaddles();}return;}if(e.code==='Space'&&(!e.target.closest('button')||e.target.id==='castBtn')){if(panel.open||$('#catchDialog').open)return;e.preventDefault();if(e.repeat)return;if(phase==='bite')beginReel();else if(phase==='idle')cast();held=phase==='reeling';}if(!panel.open&&!$('#catchDialog').open){if(e.code==='KeyM')openPanel('map');if(e.code==='KeyB')openPanel('book');}});
-window.addEventListener('keyup',e=>{if(e.code==='Space')held=false;if(paddleKeys.delete(e.code))updatePaddles();});
+function pressPrimary(source){
+ if(pressedBy!==null||castButton.disabled||panel.open||$('#catchDialog').open)return;
+ pressedBy=source;
+ if(phase==='idle')cast();
+ else if(phase==='cast'||phase==='wait')idle('收回空钩，饵还在。');
+ else if(phase==='bite')beginReel();
+}
+function releasePrimary(source){if(pressedBy===source)pressedBy=null;}
+castButton.addEventListener('pointerdown',e=>{
+ if(e.button!==0||!e.isPrimary)return;
+ castButton.setPointerCapture(e.pointerId);pressPrimary(e.pointerId);
+});
+for(const type of ['pointerup','pointercancel','lostpointercapture'])
+ castButton.addEventListener(type,e=>releasePrimary(e.pointerId));
+// Assistive technology may activate a button without any pointer or key event.
+castButton.addEventListener('click',e=>{if(e.detail===0){pressPrimary('activate');releasePrimary('activate');}});
+window.addEventListener('blur',()=>{pressedBy=null;paddleKeys.clear();world?.setPaddle(0,0);});
+window.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||panel.open||$('#catchDialog').open||e.defaultPrevented)return;const movement=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'];if(movement.includes(e.code)){e.preventDefault();if((sailing||!e.repeat)&&startSailing()){paddleKeys.add(e.code);updatePaddles();}return;}if((e.code==='Space'&&(!e.target.closest('button')||e.target===castButton))||(e.key==='Enter'&&e.target===castButton)){e.preventDefault();if(!e.repeat)pressPrimary(e.code);return;}if(phase==='idle'){if(e.code==='KeyM')openPanel('map');if(e.code==='KeyB')openPanel('book');}});
+window.addEventListener('keyup',e=>{releasePrimary(e.code);if(paddleKeys.delete(e.code))updatePaddles();});
 panel.addEventListener('close',()=>{if(panel.open)return;world?.setPaused(false);updatePaddles();});
 const endStick=bindJoystick(startSailing,(x,z)=>world?.setPaddle(x,z));
 const minimap=createMinimap($('#minimapBase'),$('#minimapMarker'));
@@ -179,9 +250,9 @@ document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPanel(b.da
 for(const tab of $('#bagTabs').children)tab.onclick=()=>openPanel(tab.dataset.tab);
 $('#boatBtn').onclick=boatChange;$('#closePanel').onclick=()=>panel.close();$('#releaseBtn').onclick=()=>settleCatch(true);$('#sellBtn').onclick=()=>settleCatch(false);$('#catchDialog').addEventListener('cancel',e=>e.preventDefault());panel.addEventListener('click',e=>{if(e.target===panel){const r=panel.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)panel.close();}});
 renderHUD();
-window.render_game_to_text=()=>JSON.stringify({coordinates:'world x east, z south; origin at lake center',ready:window.__HUAYUE__?.ready??false,phase,location:state.location,season:state.season,time:state.time,coins:state.coins,boat:state.boat,sailing,navigation:world?.getNavigation()??null,bait:{id:state.bait,count:state.baits[state.bait]},rod:state.rod,recordedFish:Object.keys(state.book),fish:fish?{id:fish.id,name:fish.name,stars:fish.stars}:null,reel:phase==='reeling'?{progress:reel,tension}:null});
+window.render_game_to_text=()=>JSON.stringify({coordinates:'world x east, z south; origin at lake center',ready:window.__HUAYUE__?.ready??false,phase,location:state.location,season:state.season,time:state.time,coins:state.coins,boat:state.boat,sailing,navigation:world?.getNavigation()??null,bait:{id:state.bait,count:state.baits[state.bait]},rod:state.rod,recordedFish:Object.keys(state.book),fish:fish?{id:fish.id,name:fish.name,stars:fish.stars}:null,reel:phase==='reel'?{progress:reel,tension}:null});
 window.__HUAYUE__={getState:()=>JSON.parse(JSON.stringify(state)),getPhase:()=>phase,getNavigation:()=>world?.getNavigation(),ready:false};
-try{const {createWorld}=await import('./scene.js');world=await createWorld($('#world'),{minimap,onArrival:arrive,onBearing:showBearing,onInspect:openPanel});world.setLocation(state.location);world.setClimate(state.season,state.time,weatherOf(state),true);world.setBoat(state.boat);world.setFishing('idle');$('#loading')?.remove();window.__HUAYUE__.ready=true;announceLocation();
+try{const {createWorld}=await import('./scene.js');world=await createWorld($('#world'),{minimap,getFishingPhase:()=>phase,onArrival:arrive,onBearing:showBearing,onInspect:openPanel});world.setLocation(state.location);world.setClimate(state.season,state.time,weatherOf(state),true);world.setBoat(state.boat);renderFishing();$('#loading')?.remove();window.__HUAYUE__.ready=true;announceLocation();
  let previous=performance.now(),stillSince=0;
  setInterval(()=>{
   const now=performance.now(),elapsed=(now-previous)/1000;previous=now;
@@ -196,5 +267,5 @@ try{const {createWorld}=await import('./scene.js');world=await createWorld($('#w
   if(advanceClock(state,elapsed)){applySky();save();}
  },250);
  function checkpointClock(){try{if(localStorage.getItem(KEY)===checkpoint)save();}catch{}}
- document.addEventListener('visibilitychange',()=>{previous=performance.now();if(document.hidden)checkpointClock();});
+ document.addEventListener('visibilitychange',()=>{previous=performance.now();if(document.hidden){pressedBy=null;checkpointClock();}});
  window.addEventListener('pagehide',checkpointClock);}catch(e){console.error(e);$('#loading').innerHTML='湖面暂时没有展开<span>请用项目里的「启动花月汀.cmd」打开，或确认浏览器支持 WebGL。</span>';$('#loading').style.zIndex=0;}

@@ -1,6 +1,11 @@
 {
   "fixture": "fresh browser save seeded with 5000 coins to exercise purchase paths",
   "checks": [
+    "idle equipment shortcuts",
+    "withdraw during cast and wait without spending bait",
+    "equipment and menu lock during fishing",
+    "six state transitions",
+    "rapid cast and settlement inputs",
     "all three paid rods purchased",
     "free re-equip initial rod",
     "boat ownership purchase and duplicate disabled",
@@ -11,7 +16,7 @@
     "sell-fish path registers notebook and earnings",
     "particle reset after catch"
   ],
-  "fishActuallyCaught": "麦穗小鲫",
-  "saleLabel": "交换 +22 花月币 · 初遇另加 35",
+  "fishActuallyCaught": "青苇鲦",
+  "saleLabel": "交换 +26 花月币 · 初遇另加 35",
   "consoleErrors": []
 }

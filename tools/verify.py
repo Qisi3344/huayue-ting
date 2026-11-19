@@ -83,7 +83,7 @@ async def main():
         holding=False
         deadline=asyncio.get_running_loop().time()+65
         while asyncio.get_running_loop().time()<deadline:
-            if await page.evaluate('window.__HUAYUE__.getPhase()')=='caught':break
+            if await page.evaluate('window.__HUAYUE__.getPhase()')=='result':break
             value=await page.locator('#tensionMarker').evaluate('(e)=>parseFloat(e.style.left)/100')
             if value<.33 and not holding:
                 await page.mouse.down();holding=True
@@ -91,7 +91,7 @@ async def main():
                 await page.mouse.up();holding=False
             await page.wait_for_timeout(220)
         if holding:await page.mouse.up()
-        assert await page.evaluate('window.__HUAYUE__.getPhase()')=='caught',await page.evaluate('window.render_game_to_text()')
+        assert await page.evaluate('window.__HUAYUE__.getPhase()')=='result',await page.evaluate('window.render_game_to_text()')
         await page.screenshot(path=str(OUT/'05-catch.png'))
         await page.locator('#releaseBtn').click()
         caught=await page.evaluate('window.__HUAYUE__.getState()')

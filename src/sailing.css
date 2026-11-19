@@ -80,3 +80,9 @@
 .player-position:after{content:'';position:absolute;left:8px;bottom:3px;width:16px;height:16px;background:#2d6473;border:2px solid ivory;border-radius:55% 55% 55% 0;transform:rotate(-45deg);box-shadow:0 1px 3px #32494755}
 #panel[data-kind="map"] .close-button{z-index:6}
 @media(max-width:650px){.map-pin span{letter-spacing:0;font-size:12px}.atlas-hint{font-size:11px}}
+
+.gear-icon{transition:opacity .2s,visibility .2s}
+#game:not([data-phase="idle"]) .gear-icon{opacity:0;visibility:hidden;pointer-events:none}
+#game[data-phase="bite"] .cast-button{box-shadow:0 0 0 3px #e7ce89,0 3px 16px #52694b60}
+#game[data-phase="bite"] .fishing-message{color:#354d3c;background:#fff7daee;border-radius:14px}
+@media(prefers-reduced-motion:reduce){.gear-icon{transition:none}}

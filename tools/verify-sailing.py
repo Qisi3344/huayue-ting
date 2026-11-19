@@ -109,6 +109,12 @@ with sync_playwright() as pw:
     touch('touchEnd',[])
     assert page.locator('#joystick').is_hidden()
     page.tap('#castBtn')
+    page.wait_for_function("window.__HUAYUE__.getPhase()==='wait'")
+    assert page.locator('[data-open="bait"]').is_disabled()
+    page.tap('#castBtn')
+    page.tap('[data-open="bait"]')
+    page.tap('[data-equip="grain"]')
+    page.tap('#castBtn')
     page.wait_for_function("window.__HUAYUE__.getPhase()==='bite'")
     assert page.locator('#castLabel').inner_text()=='鱼上钩了 · 收线'
     assert not errors,errors
