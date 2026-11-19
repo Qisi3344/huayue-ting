@@ -11,7 +11,8 @@ async def main():
   # Explicit test fixture, not a reward or fake gameplay result.
   await page.evaluate('''()=>{let s=window.__HUAYUE__.getState();s.coins=5000;localStorage.setItem('huayue-cove-save-v1',JSON.stringify(s));}''')
   await page.reload(wait_until='networkidle');await page.wait_for_function('window.__HUAYUE__?.ready===true')
-  await page.locator('[data-open="shop"]').click()
+  await page.locator('[data-open="bag"]').click()
+  await page.locator('[data-tab="shop"]').click()
   for id in ['reed','moon','starlake']:
    await page.locator(f'[data-buy-rod="{id}"]').click()
    assert await page.evaluate('window.__HUAYUE__.getState().rod')==id

@@ -13,29 +13,26 @@
   <div class="dial-wrap">
    <button id="minimap" type="button" aria-label="打开水域地图，北在上"><span id="minimapBase" aria-hidden="true"></span><span class="compass-north" aria-hidden="true">北</span><i id="minimapMarker" aria-hidden="true"></i></button>
    <button id="dial" type="button" aria-label="花月盘" aria-describedby="dialHelp"><i class="season-symbol" aria-hidden="true"></i></button><span id="dialReadout" role="status" hidden></span><span id="dialHelp" class="sr-only">轻点查看，长按或按下方向键进入调节</span></div>
-  <div class="top-actions"><button id="soundBtn" class="quiet" title="开启湖畔环境音" aria-label="开启湖畔环境音" aria-pressed="false">湖声 <span id="soundLabel">关</span></button><button id="walletBtn" class="wallet" title="仅供游戏内使用的虚拟花月币"><span class="coin" aria-hidden="true">✦</span><strong id="coins">160</strong><span>花月币</span></button></div>
+  <div class="top-actions"><output class="wallet" aria-label="花月币余额"><span class="coin" aria-hidden="true">✦</span><strong id="coins"></strong></output></div>
  </header>
  <div id="waypoint" class="waypoint" hidden><span class="waypoint-arrow" aria-hidden="true"></span><span id="waypointName"></span><span id="waypointDistance"></span><button id="cancelWaypoint" type="button" aria-label="取消目的地追踪" title="取消追踪">×</button></div>
  <section class="location-block" aria-label="当前地点">
   <h1 id="locationName"></h1><p id="locationTag"></p>
  </section>
  <nav class="side-nav" aria-label="游戏菜单">
-  <button data-open="map" class="nav-item"><span class="css-icon map-icon" aria-hidden="true"></span><span>去哪里</span></button>
-  <button data-open="book" class="nav-item"><span class="css-icon book-icon" aria-hidden="true"></span><span>鱼笺册</span><small id="bookCount">0 / 36</small></button>
-  <button data-open="shop" class="nav-item"><span class="css-icon shop-icon" aria-hidden="true"></span><span>渔具铺</span></button>
+  <button data-open="bag" class="nav-item bag-button" title="背包" aria-label="背包"><i aria-hidden="true"></i></button>
+  <button id="boatBtn" class="dock-action" hidden></button>
  </nav>
  <div id="joystick" aria-hidden="true" hidden><i></i></div>
  <section class="fishing-hud" aria-label="钓鱼操作">
-  <button class="gear-icon rod-icon" id="rodInfo" aria-label="选择鱼竿"><i></i></button>
   <div class="main-fishing"><div class="fishing-message" id="fishingMessage" role="status" aria-live="polite"></div>
    <div id="reelPanel" hidden><div class="reel-labels"><span>跟着鱼，轻轻收线</span><span id="reelPercent">0%</span></div><div class="tension-track"><div id="safeZone"></div><div id="tensionMarker"></div></div><div class="reel-progress"><i id="reelProgress"></i></div><small>按住收线，松开缓一缓</small></div>
    <button id="castBtn" class="cast-button"><span id="castLabel">抛一竿</span></button>
   </div>
-  <button class="gear-icon bait-icon" id="baitInfo" aria-label="选择鱼饵"><i></i></button>
  </section>
  <div id="toast" class="toast" role="status" hidden></div>
 </div>
-<dialog id="panel" class="panel-dialog"><button id="closePanel" class="close-button" aria-label="关闭">×</button><div id="panelContent"></div></dialog>
+<dialog id="panel" class="panel-dialog"><button id="closePanel" class="close-button" aria-label="关闭">×</button><nav id="bagTabs" aria-label="背包分类" hidden><button data-tab="book">鱼笺册</button><button data-tab="shop">渔具铺</button><button data-tab="rod">鱼竿</button><button data-tab="bait">鱼饵</button><button data-tab="clock">设置</button></nav><div id="panelContent"></div></dialog>
 <dialog id="catchDialog" class="catch-dialog"><p class="eyebrow" id="catchEyebrow">今天的第一份小惊喜</p><canvas id="catchArt" width="480" height="240" aria-label="捕获鱼的图鉴插画"></canvas><div id="catchStars" class="stars"></div><h2 id="catchName"></h2><p id="catchDetail"></p><p id="catchNote" class="fish-note"></p><div class="catch-actions"><button id="releaseBtn" class="primary">记下它，再放归湖里 <small id="releaseValue"></small></button><button id="sellBtn" class="secondary">带去渔具铺 <small id="sellValue"></small></button></div><small class="catch-footnote">两种选择都会记录鱼笺，放归也能获得观察酬金。</small></dialog>
 <script type="module" src="src/main.js"></script>
 </body>

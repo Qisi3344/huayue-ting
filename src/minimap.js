@@ -1,7 +1,5 @@
 // North is -Z and east is +X. Both extents are square so heading and distance
 // have the same scale on either axis, even on a portrait screen.
-const routeBounds={xmin:-10,xmax:24,zmin:-17,zmax:17};
-const localBounds={xmin:-13,xmax:17,zmin:-15,zmax:15};
 const resolution=384;
 
 function paintBase(bounds,{banks,trees,docks,falls}){
@@ -38,16 +36,20 @@ function paintBase(bounds,{banks,trees,docks,falls}){
 
 export function createMinimap(base,marker){
  const cache=new Map();
- let bounds=routeBounds,lastX,lastZ,lastYaw,lastBoat;
+ let bounds,lastX,lastZ,lastYaw,lastBoat;
  return {
   setArea(key,features){
-   bounds=key==='route'?routeBounds:localBounds;
+   const [left,right,top,bottom]=features.bounds;
+   const half=Math.hypot(right-left,bottom-top)*.53;
+   const cx=(left+right)/2,cz=(top+bottom)/2;
+   bounds={xmin:cx-half,xmax:cx+half,zmin:cz-half,zmax:cz+half};
    if(!cache.has(key))cache.set(key,paintBase(bounds,features));
    const canvas=cache.get(key);
    if(base.firstChild!==canvas)base.replaceChildren(canvas);
    lastX=undefined;
   },
   update(x,z,yaw,onBoat){
+   if(!bounds)return;
    if(x!==lastX||z!==lastZ){
     marker.style.left=(x-bounds.xmin)/(bounds.xmax-bounds.xmin)*100+'%';
     marker.style.top=(z-bounds.zmin)/(bounds.zmax-bounds.zmin)*100+'%';
@@ -61,4 +63,34 @@ export function createMinimap(base,marker){
    if(onBoat!==lastBoat){marker.classList.toggle('ashore',!onBoat);lastBoat=onBoat;}
   }
  };
+}
+export function drawAtlas(canvas){
+ const ctx=canvas.getContext('2d');
+ canvas.width=1280;canvas.height=840;
+ ctx.scale(12.8,8.4);
+ // Broad watercolor washes and a fine ink waterline around the connected basin.
+ const lake=new Path2D('M 7 78 C 18 70 11 58 26 55 S 38 49 36 40 Q 32 28 42 18 Q 48 21 43 32 Q 38 46 48 44 C 59 44 54 30 65 22 Q 77 16 72 28 Q 61 33 61 41 Q 62 47 73 43 Q 93 33 90 49 Q 89 58 77 59 Q 66 60 66 70 Q 70 82 59 86 Q 52 82 56 73 Q 61 58 49 59 Q 36 57 30 65 Q 22 80 7 78 Z');
+ ctx.lineJoin='round';ctx.strokeStyle='#b5bf9e';ctx.lineWidth=4;ctx.stroke(lake);
+ ctx.strokeStyle='#e8dfbc';ctx.lineWidth=2.9;ctx.stroke(lake);
+ const water=ctx.createLinearGradient(24,25,79,83);water.addColorStop(0,'#bbd5c4');water.addColorStop(.6,'#8eb9ae');water.addColorStop(1,'#b2cabc');
+ ctx.fillStyle=water;ctx.fill(lake);ctx.lineWidth=.22;ctx.strokeStyle='#668e83';ctx.stroke(lake);
+ ctx.save();ctx.clip(lake);
+ ctx.strokeStyle='#749f93';ctx.lineWidth=.11;
+ for(let i=0;i<320;i++){
+  const x=(i*37.13)%100,y=(i*17.51)%100;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+.7,y+.31,x+1.4,y-.06);ctx.stroke();
+ }
+ ctx.restore();
+ ctx.fillStyle='#d7d4ac';ctx.beginPath();ctx.ellipse(50.8,51.3,3.3,2,-.3,0,2*Math.PI);ctx.fill();ctx.stroke();
+ for(const [cx,cy,n] of [[13,35,18],[58,19,12],[74,14,9],[40,69,12],[81,68,11]]){
+  for(let i=0;i<n;i++){
+   const x=cx+Math.sin(i*2.4)*Math.sqrt(i)*1.7,y=cy+Math.cos(i*2.4)*Math.sqrt(i)*1.3;
+   ctx.fillStyle=i%2?'#95a788':'#a6b495';ctx.beginPath();ctx.moveTo(x,y-1.9);ctx.lineTo(x+.6,y-.55);ctx.lineTo(x+.36,y-.61);ctx.lineTo(x+.94,y+.4);ctx.lineTo(x-.91,y+.4);ctx.lineTo(x-.38,y-.65);ctx.lineTo(x-.59,y-.56);ctx.closePath();ctx.fill();
+   ctx.fillRect(x-.09,y+.4,.18,.36);
+  }
+ }
+ ctx.strokeStyle='#a4a88e';ctx.lineWidth=.22;
+ for(const [x,y,r] of [[76,29,3],[80,32,4.5],[85,30,2.8],[22,22,3],[25,23,2]]){
+  ctx.beginPath();ctx.moveTo(x-r,y);ctx.lineTo(x,y-r*1.5);ctx.lineTo(x+r,y);ctx.stroke();
+ }
 }

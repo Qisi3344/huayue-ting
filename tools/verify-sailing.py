@@ -19,7 +19,7 @@ with sync_playwright() as pw:
     page.locator('#dialReadout').wait_for(state='hidden')
     page.wait_for_function("document.querySelector('#game').classList.contains('idle-hud')")
     page.wait_for_function("getComputedStyle(document.querySelector('.side-nav')).opacity<.5")
-    assert page.evaluate("['#minimap','.topbar','#castBtn'].every(s=>getComputedStyle(document.querySelector(s)).opacity==='1')")
+    assert page.evaluate("['.topbar','#castBtn'].every(s=>getComputedStyle(document.querySelector(s)).opacity==='1')")
     page.mouse.move(90,48)
     assert page.locator('#game.idle-hud').count()==0
     assert page.locator('.location-block').evaluate("e=>Number(getComputedStyle(e).opacity)")<.1
@@ -50,33 +50,40 @@ with sync_playwright() as pw:
           return [parseFloat(el.style.left),parseFloat(el.style.top),-m.c,-m.d,n.x,n.z];
         }""")
         u,v,east,south,x,z=sample
-        assert abs(u-(x+10)/34*100)<.002 and abs(v-(z+17)/34*100)<.002,sample
+        half=(49**2+34**2)**.5*.53
+        assert abs(u-(.5+(x-8.5)/(2*half))*100)<.002 and abs(v-(.5+(z-1)/(2*half))*100)<.002,sample
         assert (east if axis=='x' else south)*sign>.95,sample
     assert page.evaluate("firstChart===document.querySelector('#minimapBase canvas')")
-    page.click('#minimap')
     page.click('#boatBtn')
     page.wait_for_selector('#minimapMarker.ashore')
     page.click('#minimap')
     page.click('[data-location="falls"]')
+    assert page.locator('#placeBubble').is_visible()
+    assert page.evaluate("window.__HUAYUE__.getState().location==='reed'")
+    page.click('[data-location="falls"]')
     assert page.evaluate("firstChart!==document.querySelector('#minimapBase canvas')")
     page.click('#minimap')
     page.click('[data-location="reed"]')
+    page.click('[data-location="reed"]')
     assert page.evaluate("firstChart===document.querySelector('#minimapBase canvas')")
-    page.click('#minimap')
     page.click('#boatBtn')
     page.keyboard.down('KeyD')
-    page.wait_for_function('window.__HUAYUE__.getNavigation().x>1.1')
+    page.wait_for_function('window.__HUAYUE__.getNavigation().x>2.6')
     page.keyboard.up('KeyD')
+    page.wait_for_selector('#boatBtn',state='hidden')
     assert page.locator('#waypoint').is_hidden()
-    page.click('[data-open="map"]')
+    page.wait_for_function('!window.__HUAYUE__.getNavigation().sailing')
+    page.click('#minimap')
     pos=page.evaluate('window.__HUAYUE__.getNavigation().x')
     page.keyboard.press('ArrowRight')
     assert page.evaluate('window.__HUAYUE__.getNavigation().x')==pos
     page.click('#returnDockBtn')
     assert abs(page.evaluate('window.__HUAYUE__.getNavigation().x')-.25)<.01
-    page.click('#rodInfo')
+    page.click('[data-open="bag"]')
+    page.click('[data-tab="rod"]')
     page.click('[data-equip="willow"]')
-    page.click('#baitInfo')
+    page.click('[data-open="bag"]')
+    page.click('[data-tab="bait"]')
     assert page.locator('[data-equip="star"]').is_disabled()
     page.click('[data-equip="grain"]')
     page.mouse.move(55,55)

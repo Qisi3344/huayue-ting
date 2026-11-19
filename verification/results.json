@@ -1,12 +1,12 @@
 {
   "httpStatus": 200,
   "webglReady": true,
-  "renderFrames": "60",
+  "renderFrames": "30",
   "fishCount": 36,
   "uniqueFishActuallyCaught": 1,
-  "currencyAfterTravelBuyCatch": 280,
+  "currencyAfterTravelBuyCatch": 277,
   "caughtFish": [
-    "fish-02"
+    "fish-01"
   ],
   "checks": [
     "four seasons change",

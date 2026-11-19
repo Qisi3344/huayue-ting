@@ -1,20 +1,23 @@
 import {LOCATIONS} from './data.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-export const landings = Object.fromEntries(LOCATIONS.filter(p=>['reed','sakura'].includes(p.id)).map(p=>[p.id,p.water.spawn]));
+export const landings = Object.fromEntries(LOCATIONS.filter(p=>p.routeTo).map(p=>[p.id,p.water.spawn]));
 export function otherLanding(id) {
- return id === 'reed' ? 'sakura' : id === 'sakura' ? 'reed' : null;
+ return LOCATIONS.find(p=>p.id===id)?.routeTo ?? null;
 }
 
 // Project the shared sailing route onto its two pins on the illustrated map.
 export function mapPosition(locations,id,nav){
  const area=locations.find(place=>place.id===id);
  if(!nav?.onBoat)return {x:area.x,y:area.y};
- const origin=landings.reed,dx=nav.x-origin.x,dz=nav.z-origin.z;
- if(!otherLanding(id))return {x:area.x+dx*.9,y:area.y+dz*.9};
- const start=locations.find(place=>place.id==='reed'),end=locations.find(place=>place.id==='sakura');
- const span=landings.sakura.x-origin.x;
- const eastX=(end.x-start.x)/span,eastY=(end.y-start.y)/span;
- return {x:start.x+dx*eastX-dz*eastY,y:start.y+dx*eastY+dz*eastX};
+ const origin=area.water.spawn,dx=nav.x-origin.x,dz=nav.z-origin.z;
+ const end=locations.find(place=>place.id===area.routeTo);
+ let x=area.x+dx*.9,y=area.y+dz*.9;
+ if(end){
+  const span=end.water.spawn.x-origin.x;
+  const eastX=(end.x-area.x)/span,eastY=(end.y-area.y)/span;
+  x=area.x+dx*eastX-dz*eastY;y=area.y+dx*eastY+dz*eastX;
+ }
+ return {x:clamp(x,6,94),y:clamp(y,8,92)};
 }
 
 export function createNavigation(){
@@ -22,14 +25,14 @@ export function createNavigation(){
  let harbor = 'reed';
  let water=LOCATIONS[0].water;
  function dock(){return water.spawn;}
- function snapshot(){return{x,z,vx,vz,sailing,paused,onBoat,heading,speed:Math.hypot(vx,vz),nearDock:Math.hypot(x-dock().x,z-dock().z)<1.25};}
+ function snapshot(){return{x,z,vx,vz,paddling:Boolean(ix||iz),sailing,paused,onBoat,heading,speed:Math.hypot(vx,vz),nearDock:Math.hypot(x-dock().x,z-dock().z)<1.25};}
  function clearance(a,b){
   const [left,right,top,bottom]=water.bounds;
   let margin=Math.min(a-left,right-a,b-top,bottom-b);
   for(const o of water.obstacles){
-   if(o.locationId && o.locationId!==harbor)continue;
+   // Leave room for the hull outside the visible waterline.
    const distance=(Math.hypot((a-o.x)/o.rx,(b-o.z)/o.rz)-1)*Math.min(o.rx,o.rz);
-   margin=Math.min(margin,distance);
+   margin=Math.min(margin,distance-.55);
   }
   return margin;
  }
