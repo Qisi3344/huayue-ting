@@ -197,12 +197,15 @@ function reelTick(now){
 function finishCatch(){if(!setPhase('result'))return;pressedBy=null;world?.setCatchQuality(fish.stars);const isNew=!state.book[fish.id];const length=Number((fish.length[0]+Math.random()*(fish.length[1]-fish.length[0])).toFixed(1));fish={...fish,caughtLength:length,isNew};$('#catchEyebrow').textContent=isNew?'初次相遇 · 鱼笺将新增一页':'老朋友，也值得好好打个招呼';$('#catchName').textContent=fish.name;$('#catchStars').textContent=stars(fish.stars);$('#catchDetail').textContent=`${length} cm · ${state.season} · ${TIMES[state.time]} · ${loc().name}`;$('#catchNote').textContent=fish.note;$('#releaseValue').textContent=`观察酬金 +${Math.round(fish.value*.75)} 花月币${isNew?' · 初遇另加 35':''}`;$('#sellValue').textContent=`交换 +${fish.value} 花月币${isNew?' · 初遇另加 35':''}`;drawFish($('#catchArt'),fish);$('#catchDialog').showModal();chime(true);}
 function settleCatch(release){if(phase!=='result'||!fish)return;const old=state.book[fish.id];state.baits[state.bait]=Math.max(0,state.baits[state.bait]-1);state.book[fish.id]={count:(old?.count||0)+1,maxLength:Math.max(old?.maxLength||0,fish.caughtLength),firstSeason:old?.firstSeason||state.season,firstLocation:old?.firstLocation||state.location,note:old?.note||''};state.coins+=(release?Math.round(fish.value*.75):fish.value)+(fish.isNew?35:0);if(!state.caughtSeasons.includes(state.season))state.caughtSeasons.push(state.season);if(eligibleFish(state).some(f=>f.stars===6))state.pity=fish.stars===6?0:(state.pity||0)+1;awardAchievements();save();$('#catchDialog').close();idle(release?'记下这次相遇。小鱼摇摇尾巴，回到湖里了。':'鱼篓里又多了一位朋友，继续去逛逛吧。');}
 function heading(title,sub,en,chapter=''){return `<div class="panel-heading"><div><h2>${title}</h2><p>${sub}</p></div><span class="chapter">${chapter}</span></div>`;}
-function openPanel(kind){if(busy())return;if(kind==='bag')kind='book';endStick();paddleKeys.clear();world?.setPaused(true);panelKind=kind;renderPanel();if(!panel.open)panel.showModal();}
+function openPanel(kind){if(busy())return;endStick();paddleKeys.clear();world?.setPaused(true);panelKind=kind;renderPanel();if(!panel.open)panel.showModal();}
 function renderPanel(){
  panel.dataset.kind=panelKind;
  $('#bagTabs').hidden=['clock','map'].includes(panelKind);
  for(const tab of $('#bagTabs').children)tab.setAttribute('aria-pressed',String(tab.dataset.tab===panelKind));
- if(panelKind==='clock')renderClock();else if(['rod','bait'].includes(panelKind))renderGear(panelKind);else if(panelKind==='map')renderMap();else if(panelKind==='shop')renderShop();else if(panelKind==='achievements')renderAchievements();else renderBook();}
+ if(panelKind==='bag'){
+  const rod=RODS.find(r=>r.id===state.rod);
+  content.innerHTML='<h2>随身背包</h2><p>已装备 · '+rod.name+'</p>'+BAITS.map(b=>'<p>'+b.name+' × '+state.baits[b.id]+(state.bait===b.id?' · 使用中':'')+'</p>').join('');
+ }else if(panelKind==='clock')renderClock();else if(['rod','bait'].includes(panelKind))renderGear(panelKind);else if(panelKind==='map')renderMap();else if(panelKind==='shop')renderShop();else if(panelKind==='achievements')renderAchievements();else renderBook();}
 function renderMap(){
  const pos=mapPosition(LOCATIONS,state.location,world?.getNavigation());
  const hint=!state.atlasActionsSeen;
@@ -248,9 +251,17 @@ function renderMap(){
   pin.setAttribute('aria-label',name);pin.title=name;
   pin.style.left=marker.x+'%';pin.style.top=marker.y+'%';
   art.setAttribute('aria-hidden','true');paintMarker(art,marker.type);pin.append(art);chart.append(pin);
-  pin.onclick=()=>showBubble(pin,marker.x,marker.y,name,[{label:'移除标记',run:()=>{
-   state.markers=state.markers.filter(m=>m!==marker);save();pin.remove();dismissBubble();
-  }}]);
+  pin.onclick=()=>{
+   showBubble(pin,marker.x,marker.y,name,[{label:'移除标记',run:()=>{
+    state.markers=state.markers.filter(m=>m!==marker);save();pin.remove();dismissBubble();
+   }}]);
+   if(bubble.hidden)return;
+   const note=document.createElement('textarea');
+   note.placeholder='写点备注…';note.setAttribute('aria-label','标记备注');note.maxLength=180;
+   note.value=typeof marker.note==='string'?marker.note:'';
+   note.oninput=()=>{marker.note=note.value;save();};
+   bubble.lastElementChild.before(note);
+  };
   return pin;
  }
  state.markers.forEach(addMarkerPin);
@@ -313,6 +324,17 @@ const minimap=createMinimap($('#minimapBase'),$('#minimapMarker'));
 $('#minimap').onclick=()=>openPanel('map');
 bindDial(()=>openPanel('clock'),describeSky);bindIdle();
 document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openPanel(b.dataset.open));
+for(const button of document.querySelectorAll('.side-nav [data-open]')){
+ let timer,held=false;
+ button.onpointerdown=e=>{
+  if(e.button!==0)return;
+  clearTimeout(timer);held=false;
+  timer=setTimeout(()=>{held=true;toast(button.title);},500);
+ };
+ for(const type of ['pointerup','pointercancel','pointerleave'])button.addEventListener(type,()=>clearTimeout(timer));
+ button.oncontextmenu=e=>e.preventDefault();
+ button.onclick=e=>{if(!held||e.detail===0)openPanel(button.dataset.open);held=false;};
+}
 for(const tab of $('#bagTabs').children)tab.onclick=()=>openPanel(tab.dataset.tab);
 $('#boatBtn').onclick=boatChange;$('#closePanel').onclick=()=>panel.close();$('#releaseBtn').onclick=()=>settleCatch(true);$('#sellBtn').onclick=()=>settleCatch(false);$('#catchDialog').addEventListener('cancel',e=>e.preventDefault());panel.addEventListener('click',e=>{if(e.target===panel){const r=panel.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)panel.close();}});
 renderHUD();

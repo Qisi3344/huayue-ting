@@ -97,7 +97,7 @@ async def main():
         caught=await page.evaluate('window.__HUAYUE__.getState()')
         assert len(caught['book'])==1 and caught['baits']['petal']==4
         assert 'first' in caught['achievements']
-        await page.locator('[data-open="bag"]').click()
+        await page.locator('[data-open="book"]').click()
         await page.screenshot(path=str(OUT/'06-notebook.png'))
         await page.locator('[data-filter="caught"]').click()
         await page.locator('.fish-card').click()
@@ -119,7 +119,7 @@ async def main():
         await page.screenshot(path=str(OUT/'07-winter.png'))
         await page.set_viewport_size({'width':390,'height':844})
         await page.screenshot(path=str(OUT/'08-mobile.png'))
-        await page.locator('[data-open="bag"]').click()
+        await page.locator('[data-open="book"]').click()
         overflow=await page.evaluate('document.documentElement.scrollWidth>innerWidth || document.querySelector("#panel").scrollWidth>document.querySelector("#panel").clientWidth+2')
         assert not overflow
         await page.screenshot(path=str(OUT/'09-mobile-notebook.png'))

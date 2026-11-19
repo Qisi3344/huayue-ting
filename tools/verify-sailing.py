@@ -105,6 +105,8 @@ with sync_playwright() as pw:
     assert page.locator('#panel').is_visible() and page.locator('#placeBubble').is_hidden()
     page.tap('[data-location="snow"]')
     page.screenshot(path=out/'23-mobile-map.png')
+    page.tap('[data-marker="fish"]')
+    page.get_by_label('标记备注').fill('黄昏再来 <鱼>')
     marks=page.evaluate('window.__HUAYUE__.getState().markers')
     page.reload()
     page.wait_for_function('window.__HUAYUE__?.ready')
@@ -112,6 +114,7 @@ with sync_playwright() as pw:
     assert page.evaluate('window.__HUAYUE__.getState().markers')==marks
     assert page.locator('.atlas-marker').count()==3
     page.tap('[data-marker="fish"]')
+    assert page.get_by_label('标记备注').input_value()=='黄昏再来 <鱼>'
     page.get_by_role('button',name='移除标记').tap()
     assert page.locator('.atlas-marker').count()==2
     page.tap('[data-location="falls"]')
