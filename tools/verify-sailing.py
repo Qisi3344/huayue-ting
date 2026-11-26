@@ -50,8 +50,8 @@ with sync_playwright() as pw:
           return [parseFloat(el.style.left),parseFloat(el.style.top),-m.c,-m.d,n.x,n.z];
         }""")
         u,v,east,south,x,z=sample
-        half=(49**2+34**2)**.5*.53
-        assert abs(u-(.5+(x-8.5)/(2*half))*100)<.002 and abs(v-(.5+(z-1)/(2*half))*100)<.002,sample
+        half=(61**2+34**2)**.5*.53
+        assert abs(u-(.5+(x-14.5)/(2*half))*100)<.002 and abs(v-(.5+(z-1)/(2*half))*100)<.002,sample
         assert (east if axis=='x' else south)*sign>.95,sample
     assert page.evaluate("firstChart===document.querySelector('#minimapBase canvas')")
     page.click('#boatBtn')
@@ -128,7 +128,7 @@ with sync_playwright() as pw:
     touch('touchEnd',[])
     page.tap('#resumeClock')
     touch('touchStart',[(60,580)])
-    touch('touchMove',[(102,580)])
+    touch('touchMove',[(60,532)])
     assert page.locator('#joystick').is_visible()
     page.wait_for_function('window.__HUAYUE__.getNavigation().x>1')
     page.wait_for_timeout(4200)

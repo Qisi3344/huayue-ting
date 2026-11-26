@@ -1,13 +1,23 @@
 export const SEASONS = ['春','夏','秋','冬'];
 export const TIMES = {dawn:'清晨',day:'日间',dusk:'黄昏',night:'夜晚'};
 // Shore ellipses and landing positions use the same X/Z units as the boat.
-const home={x:.25,z:1.6},creekDock={x:18,z:1.6};
+const home={x:.25,z:1.6},creekDock={x:36,z:1.6};
 const island={x:-7,z:-3,rx:6.15,rz:5.7};
-const creekIsland={x:19,z:-6,rx:5.1,rz:4.7};
+const creekIsland={x:37,z:-6,rx:5.1,rz:4.7};
 function water(bounds,shore,outer,extra=[]){
  return {bounds,spawn:home,banks:[shore,outer],obstacles:[shore,outer,...extra]};
 }
-const ferryWater=water([-16,33,-16,18],island,{x:-13,z:5,rx:5.7,rz:3.9},[creekIsland]);
+// Cross sections in world metres: east X, north bank Z, south bank Z.
+export const channel=[[-16,2,2],[-13,-6,10],[-7,-12,15],[1,-14,15],[7,-11,13],[12,-5,11],[16,3.4,13.1],[20,8.8,16.4],[23,4.3,12.5],[27,-1,7],[30,-3.6,6.5],[35,-5,8],[40,-4,7],[45,2,2]];
+export const bridgeX=31;
+export function bankZ(x,side){
+ const i=channel.findIndex(row=>row[0]>=x);
+ if(i<=0)return (i===0?channel[0]:channel.at(-1))[side];
+ const a=channel[i-1],b=channel[i];
+ return a[side]+(b[side]-a[side])*(x-a[0])/(b[0]-a[0]);
+}
+const ferryWater=water([-16,45,-16,18],island,{x:-13,z:5,rx:5.7,rz:3.9},[creekIsland]);
+ferryWater.channel=channel;
 const snowWater=water([-19,24,-17,21],{...island,rz:6.5},{x:7,z:-6,rx:5,rz:2.1});
 const fallsWater=water([-16,22,-19,18],{...island,rx:6.5},{x:6.4,z:-10,rx:4.1,rz:3},[{x:5.5,z:-7,rx:1.6,rz:1.3}]);
 const tideWater=water([-22,30,-16,17],{...island,rz:4.9},{x:7,z:-6,rx:6,rz:1.5});

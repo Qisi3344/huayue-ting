@@ -13,14 +13,23 @@ for(const [from,to,direction] of [['reed','sakura',1],['sakura','reed',-1]]){
  ferry.setHarbor(from);
  ferry.setSailing(true);
  assert.equal(ferry.reachedDestination(),false,'选航线不会立即抵达');
- ferry.setInput(direction,0);
- for(let frame=0;frame<600 && !ferry.reachedDestination();frame++) ferry.step(1/60);
+ const points=[[9,2],[16,8],[20,12.3],[23,8.5],[27,3],[33,1.6]];
+ if(direction<0)points.reverse();
+ points.push(direction>0?[36,1.6]:[.25,1.6]);
+ for(const [x,z] of points){
+  for(let frame=0;frame<600;frame++){
+   const pos=ferry.snapshot(),dx=x-pos.x,dz=z-pos.z,d=Math.hypot(dx,dz);
+   if(d<.35)break;
+   ferry.setInput(dx/d,dz/d);ferry.step(1/60);
+  }
+  assert.ok(Math.hypot(ferry.snapshot().x-x,ferry.snapshot().z-z)<.4,'双向实际航道畅通');
+ }
  assert.equal(ferry.reachedDestination(),true,'能够划到对岸');
  ferry.setSailing(false);
  ferry.setHarbor(to);
  assert.ok(ferry.snapshot().nearDock,'到达后当前位置就是新码头');
  ferry.reset();
- assert.equal(ferry.snapshot().x,to==='sakura'?18:.25,'救援回到当前水域');
+ assert.equal(ferry.snapshot().x,to==='sakura'?36:.25,'救援回到当前水域');
 }
 console.log(JSON.stringify({navigationChecks:['movement','anchor','pause','water boundary','return dock','island collision','ashore movement blocked','two-way harbor crossing and rescue'],status:'passed'},null,2));
 

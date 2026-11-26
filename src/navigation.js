@@ -1,4 +1,4 @@
-import {LOCATIONS} from './data.js';
+import {LOCATIONS,bankZ} from './data.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const landings = Object.fromEntries(LOCATIONS.filter(p=>p.routeTo).map(p=>[p.id,p.water.spawn]));
 export function otherLanding(id) {
@@ -29,6 +29,7 @@ export function createNavigation(){
  function clearance(a,b){
   const [left,right,top,bottom]=water.bounds;
   let margin=Math.min(a-left,right-a,b-top,bottom-b);
+  if(water.channel)margin=Math.min(margin,b-bankZ(a,1)-.85,bankZ(a,2)-b-.85);
   for(const o of water.obstacles){
    // Leave room for the hull outside the visible waterline.
    const distance=(Math.hypot((a-o.x)/o.rx,(b-o.z)/o.rz)-1)*Math.min(o.rx,o.rz);
@@ -44,11 +45,10 @@ export function createNavigation(){
   setPaused(value){paused=Boolean(value);if(paused){ix=0;iz=0;vx=0;vz=0;}},
   setOnBoat(value){onBoat=Boolean(value);if(!onBoat){sailing=false;vx=0;vz=0;ix=0;iz=0;}},
   setHarbor(id){const place=LOCATIONS.find(p=>p.id===id);if(place){harbor=id;water=place.water;}},
-  reachedDestination(){
-   const target=landings[otherLanding(harbor)];
+  reachedDestination(target=landings[otherLanding(harbor)]){
    return Boolean(target && sailing && onBoat && !paused && Math.hypot(x-target.x,z-target.z)<1.25);
   },
-  reset(){x=dock().x;z=dock().z;vx=0;vz=0;ix=0;iz=0;heading=-.27;sailing=false;},
+  reset(){x=dock().x;z=dock().z;vx=0;vz=0;ix=0;iz=0;heading=water.channel?(dock().x<10?Math.PI/2:-Math.PI/2):-.27;sailing=false;},
   step(seconds){const dt=clamp(Number(seconds)||0,0,.2);if(!sailing||paused||!onBoat||!dt)return snapshot();const response=1-Math.exp(-8*dt);vx+=(ix*2.6-vx)*response;vz+=(iz*2.6-vz)*response;const margin=clearance(x,z);
    if(margin<1.2){
     const gx=(clearance(x+.02,z)-clearance(x-.02,z))/.04,gz=(clearance(x,z+.02)-clearance(x,z-.02))/.04;

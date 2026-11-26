@@ -1,5 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
 
+import {channel,bankZ} from './data.js';
+
 export const waterHeight = -.13;
 
 // The horizontal intersection of the bank ellipsoids at the water level.
@@ -13,7 +15,16 @@ export function createLake(scene, renderer, banks) {
  const mirror = new THREE.OrthographicCamera();
  mirror.layers.set(1);
  const look = new THREE.Vector3();
+ // One texel per river cross-section sample, shared by foam and shallows.
+ const samples=new Uint8Array(256*4);
+ for(let i=0;i<256;i++){
+  const x=channel[0][0]+i/255*(channel.at(-1)[0]-channel[0][0]);
+  samples[i*4]=Math.round((bankZ(x,1)+20)*6);samples[i*4+1]=Math.round((bankZ(x,2)+20)*6);samples[i*4+3]=255;
+ }
+ const riverTexture=new THREE.DataTexture(samples,256,1);
+ riverTexture.minFilter=riverTexture.magFilter=THREE.LinearFilter;riverTexture.needsUpdate=true;
  const uniforms = {
+  riverEdges:{value:riverTexture},
   limits:{value:new THREE.Vector4(-3,21,-10,10)}, tint: {value: new THREE.Color()}, sky: {value: new THREE.Color()},
   lightTint: {value: new THREE.Color()}, clock: {value: 0}, banks: {value: banks},
   creekVisible: {value: 1}, reflected: {value: reflection.texture},
@@ -37,7 +48,7 @@ export function createLake(scene, renderer, banks) {
    uniform vec3 tint, sky, lightTint;
    uniform float clock, creekVisible;
    uniform vec4 banks[3],limits;
-   uniform sampler2D reflected;
+   uniform sampler2D reflected,riverEdges;
    uniform vec2 reflectionTexel;
    varying vec3 world;
    varying vec4 reflectionUV;
@@ -54,7 +65,10 @@ export function createLake(scene, renderer, banks) {
    void main() {
     vec2 p = world.xz;
     float d = min(shore(p,banks[0]),shore(p,banks[1]));
-    if (creekVisible>.5) d = min(d,shore(p,banks[2]));
+    if (creekVisible>.5){
+     vec2 sides=texture2D(riverEdges,vec2(clamp((p.x-limits.x)/(limits.y-limits.x),0.,1.)*(255./256.)+.5/256.,.5)).rg*42.5-20.;
+     d=min(min(d,shore(p,banks[2])),min(p.y-sides.x,sides.y-p.y));
+    }
     float drift = noise(p*vec2(.75,2.6)+vec2(clock*.12,-clock*.18));
     float ripple = noise(p*vec2(1.7,6.2)+vec2(-clock*.19,clock*.23));
     vec2 bend = vec2(drift-.5,ripple-.5);
@@ -195,6 +209,6 @@ export function createLake(scene, renderer, banks) {
  }
  return {setBounds(bounds){uniforms.limits.value.fromArray(bounds);},tint:uniforms.tint.value,resize,update,capture,resetWake,invalidate,
   environment(sky,light,creek,invalidate=true){uniforms.sky.value.copy(sky);uniforms.lightTint.value.copy(light);uniforms.creekVisible.value=Number(creek);if(invalidate)lastCapture=-Infinity;},
-  dispose(){reflection.dispose();}
+  dispose(){riverTexture.dispose();reflection.dispose();}
  };
 }

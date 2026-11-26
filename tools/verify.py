@@ -1,5 +1,6 @@
 import asyncio, json, os
 from pathlib import Path
+from creek_drive import OUTBOUND, ROW_TO
 from playwright.async_api import async_playwright
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -51,9 +52,13 @@ async def main():
                 await page.locator('#minimap').click()
                 await page.locator('[data-location="sakura"]').click()
                 await page.get_by_role('button',name='划船前往').click()
+                for point in OUTBOUND:
+                    await page.evaluate(ROW_TO,point)
                 await page.keyboard.down('ArrowRight')
-                try: await page.wait_for_function("window.__HUAYUE__.getState().location==='sakura'",timeout=90000)
-                finally: await page.keyboard.up('ArrowRight')
+                try:
+                    await page.wait_for_function("document.querySelector('#waypoint').hidden",timeout=60000)
+                finally:
+                    await page.keyboard.up('ArrowRight')
             assert await page.locator('#waypoint').is_hidden()
             assert await page.evaluate('window.__HUAYUE__.getState().location')==location
         # Navigation achievement is actually earned by all six visits.

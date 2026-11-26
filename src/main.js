@@ -131,7 +131,6 @@ function showBearing(angle,distance){
 $('#cancelWaypoint').onclick=()=>trackDestination(null);
 function arrive(id){
  if(!sailing || id!==otherLanding(state.location)) return;
- stopSailing();
  state.location=id;
  world.setLocation(id,true);
  if(!state.visited.includes(id)) state.visited.push(id);
@@ -319,7 +318,7 @@ window.addEventListener('blur',()=>{pressedBy=null;paddleKeys.clear();world?.set
 window.addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||panel.open||$('#catchDialog').open||e.defaultPrevented)return;const movement=['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft','ArrowDown','ArrowRight'];if(movement.includes(e.code)){e.preventDefault();if((sailing||!e.repeat)&&startSailing()){paddleKeys.add(e.code);updatePaddles();}return;}if((e.code==='Space'&&(!e.target.closest('button')||e.target===castButton))||(e.key==='Enter'&&e.target===castButton)){e.preventDefault();if(!e.repeat)pressPrimary(e.code);return;}if(phase==='idle'){if(e.code==='KeyM')openPanel('map');if(e.code==='KeyB')openPanel('book');}});
 window.addEventListener('keyup',e=>{releasePrimary(e.code);if(paddleKeys.delete(e.code))updatePaddles();});
 panel.addEventListener('close',()=>{if(panel.open)return;world?.setPaused(false);updatePaddles();});
-const endStick=bindJoystick(startSailing,(x,z)=>world?.setPaddle(x,z));
+const endStick=bindJoystick(startSailing,(x,z)=>world?.setStick(x,z));
 const minimap=createMinimap($('#minimapBase'),$('#minimapMarker'));
 $('#minimap').onclick=()=>openPanel('map');
 bindDial(()=>openPanel('clock'),describeSky);bindIdle();
@@ -340,7 +339,7 @@ $('#boatBtn').onclick=boatChange;$('#closePanel').onclick=()=>panel.close();$('#
 renderHUD();
 window.render_game_to_text=()=>JSON.stringify({coordinates:'world x east, z south; origin at lake center',ready:window.__HUAYUE__?.ready??false,phase,location:state.location,season:state.season,time:state.time,coins:state.coins,boat:state.boat,sailing,navigation:world?.getNavigation()??null,bait:{id:state.bait,count:state.baits[state.bait]},rod:state.rod,recordedFish:Object.keys(state.book),fish:fish?{id:fish.id,name:fish.name,stars:fish.stars}:null,reel:phase==='reel'?{progress:reel,tension}:null});
 window.__HUAYUE__={getState:()=>JSON.parse(JSON.stringify(state)),getPhase:()=>phase,getNavigation:()=>world?.getNavigation(),ready:false};
-try{const {createWorld}=await import('./scene.js');world=await createWorld($('#world'),{minimap,getFishingPhase:()=>phase,onArrival:arrive,onBearing:showBearing,onInspect:openPanel});world.setLocation(state.location);world.setClimate(state.season,state.time,weatherOf(state),true);world.setBoat(state.boat);renderFishing();$('#loading')?.remove();window.__HUAYUE__.ready=true;announceLocation();
+try{const {createWorld}=await import('./scene.js');world=await createWorld($('#world'),{minimap,getFishingPhase:()=>phase,onArrival:arrive,onDockArrival:stopSailing,onBearing:showBearing,onInspect:openPanel});world.setLocation(state.location);world.setClimate(state.season,state.time,weatherOf(state),true);world.setBoat(state.boat);renderFishing();$('#loading')?.remove();window.__HUAYUE__.ready=true;announceLocation();
  let previous=performance.now(),stillSince=0;
  setInterval(()=>{
   const now=performance.now(),elapsed=(now-previous)/1000;previous=now;
