@@ -36,7 +36,7 @@ with sync_playwright() as p:
                 assert not page.evaluate("window.__HUAYUE__.getState().boat")
                 page.click("#boatBtn")
             page.locator("#dial").press("ArrowDown")
-            hour={"falls":"dusk","snow":"day","tide":"day","moon":"night"}[name]
+            hour={"falls":"dusk","snow":"day","tide":"dusk","moon":"night"}[name]
             page.locator(f'#panel [data-time="{hour}"]').click()
             page.locator("#closePanel").click()
             page.reload()

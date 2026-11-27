@@ -9,12 +9,14 @@ export function bankZ(x,side){
  const a=channel[i-1],b=channel[i];
  return a[side]+(b[side]-a[side])*(x-a[0])/(b[0]-a[0]);
 }
-const reedView={water:0x87c4a3,sky:0xe1efcd,fog:0xdce7bb,light:1,hills:.74,plant:'reed',count:80};
-const snowView={water:0x76abc6,sky:0xc3deec,fog:0xe3f2f5,light:.91,hills:1.4,plant:'pine',count:18,ground:0xe2e8df,leaves:0xbacbc2,landmark:'ice'};
-const fallsView={water:0x579f94,sky:0xa8d2bf,fog:0xaacbbd,light:.8,hills:1.75,plant:'fern',count:52,landmark:'falls'};
-const sakuraView={...reedView,water:0x9ccac5,sky:0xffe8da,landmark:'blossom'};
-const tideView={water:0x85c7c2,sky:0xf3e6c1,fog:0xe2d7ad,ground:0xdfcda6,light:1.03,hills:.44,landmark:'shell'};
-const moonView={water:0x92a6bd,sky:0xd7d5e4,fog:0xc2bbd1,light:.92,hills:1.1,landmark:'arch'};
+const bridgeNorth=bankZ(bridgeX,1),bridgeSouth=bankZ(bridgeX,2);
+export const bridgeArch={mid:(bridgeNorth+bridgeSouth)/2,radius:(bridgeSouth-bridgeNorth)/2,spring:.4,rise:4.7};
+const reedView={water:0x91d8ae,deep:0x327d77,sky:0xe1efcd,fog:0xdce7bb,light:1,hills:.74,plant:'reed',count:80};
+const snowView={water:0xb5e6f2,deep:0x3170ad,sky:0xc3deec,fog:0xe3f2f5,light:.91,hills:1.4,plant:'pine',count:18,ground:0xe2e8df,leaves:0xbacbc2,landmark:'ice'};
+const fallsView={water:0x81cfac,deep:0x175e57,sky:0xa8d2bf,fog:0xaacbbd,light:.8,hills:1.75,plant:'fern',count:52,landmark:'falls'};
+const sakuraView={...reedView,water:0xc1e4d7,deep:0x51899a,sky:0xffe8da,landmark:'blossom'};
+const tideView={water:0xffcf83,deep:0xad703c,sky:0xf3e6c1,fog:0xe2d7ad,ground:0xdfcda6,light:1.03,hills:.44,landmark:'shell'};
+const moonView={water:0xb2a8df,deep:0x484181,sky:0xd7d5e4,fog:0xc2bbd1,light:.92,hills:1.1,landmark:'arch'};
 export const LOCATIONS = [
  {id:'reed',view:reedView,name:'芦眠浅湾',en:'REEDWATER',x:27,y:61,color:'#88b7a1',tag:'初次相遇的地方',description:'风穿过芦苇，木码头晒得暖暖的。岸边与小船都能垂钓。',boat:false},
  {id:'sakura',view:sakuraView,name:'落樱溪',en:'PETAL CREEK',x:40,y:30,color:'#d6a4b0',tag:'顺着花瓣往上游',description:'溪水带来落花。春天的黄昏，水下也会有一场花开。',boat:false},

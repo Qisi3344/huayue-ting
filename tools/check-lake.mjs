@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
 import {createLake} from '../src/lake.js';
 
+import {bounds,landings} from '../src/waterways.js';
+
 const scene = new THREE.Scene();
 let passes=0, reflectionSize;
 const renderer={
@@ -12,8 +14,18 @@ const renderer={
 const lake = createLake(scene, renderer);
 const depthMap=scene.children[0].material.uniforms.riverEdges.value.image;
 assert.equal(depthMap.width,256);
-assert.ok(depthMap.data.some(d=>d===0) && depthMap.data.some(d=>d>150),'shore and open water both reach the shader');
-const wakes = scene.children.filter(object => object.renderOrder === 1);
+assert.ok(depthMap.data.some((d,i)=>i%4===0&&d===0) && depthMap.data.some((d,i)=>i%4===0&&d>150),'shore and open water both reach the shader');
+function waterColor(id){
+ const p=landings[id],[left,right,top,bottom]=bounds;
+ const x=Math.round((p.x-left)/(right-left)*(depthMap.width-1)),z=Math.round((p.z-top)/(bottom-top)*(depthMap.height-1));
+ const i=(z*depthMap.width+x)*4;return [...depthMap.data.slice(i+1,i+4)];
+}
+const [tr,tg,tb]=waterColor('tide'),[sr,sg,sb]=waterColor('snow'),[mr,mg,mb]=waterColor('moon'),[fr,fg,fb]=waterColor('falls');
+assert.ok(tr>tg && tg>tb && sb>sg && sg>sr && mb>mr && mb>mg && fg>fr && fg>fb,'same daylight yields amber, ice blue, violet and jade');
+const ripple=scene.children[0].material.uniforms.impact.value;
+lake.splash(2,3);assert.deepEqual(ripple.toArray(),[2,3,0]);
+lake.clearSplash();assert.ok(ripple.z>2,'收回空钩会清掉落水涟漪');
+const wakes = scene.children.filter(object => object.renderOrder === 2);
 const fish = scene.children.find(object => object.isInstancedMesh);
 const nav = {onBoat:true, sailing:true, speed:2, x:1.8, z:4.4, vx:2, vz:0, heading:Math.PI/2};
 const pose = new THREE.Matrix4();

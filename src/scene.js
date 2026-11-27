@@ -1,6 +1,6 @@
 import {buildCreek} from './creek.js';
-import {LOCATIONS,bankZ} from './data.js';
-import {bounds,landings,berthOffsets,islets,habitatAt,outerDepth,waterDepth,bearingPoint} from './waterways.js';
+import {LOCATIONS,bankZ,bridgeX,bridgeArch} from './data.js';
+import {bounds,landings,berthOffsets,islets,habitatAt,terrainHeight,waterDepth,bearingPoint} from './waterways.js';
 import {buildRegions} from './regions.js';
 import {batchRigidMeshes} from './boat.js';
 import * as THREE from '../vendor/three.module.js';
@@ -15,7 +15,7 @@ export async function createWorld(container,options={}) {
  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0xd6e8d6);
  renderer.domElement.setAttribute('aria-label','紫瞳小灰狼坐在小木船上钓鱼的真实三维场景');container.append(renderer.domElement);
- const overhead=new THREE.OrthographicCamera(-12,12,8,-8,.1,170),chase=new THREE.PerspectiveCamera(54,1,.12,150);
+ const overhead=new THREE.OrthographicCamera(-12,12,8,-8,.1,170),chase=new THREE.PerspectiveCamera(53,1,.12,150);
  let camera=overhead,chaseYaw=Math.PI/2,chaseOrbit=0,travelSign=1,lastTurnX=0;let orbit=.49,zoom=1,targetZoom=1;
  const target=new THREE.Vector3(0,.8,0);const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
  const gradient=new THREE.DataTexture(new Uint8Array([105,178,245]),3,1,THREE.RedFormat);gradient.minFilter=THREE.NearestFilter;gradient.magFilter=THREE.NearestFilter;gradient.needsUpdate=true;
@@ -52,20 +52,23 @@ export async function createWorld(container,options={}) {
  const reeds=new THREE.Group();decorations.add(reeds);
  let seed=77;const rand=()=>{seed=(seed*16807)%2147483647;return(seed-1)/2147483646;};
  for(let i=0;i<42;i++){const x=-4.6-rand()*6.3,z=-.7+rand()*6;for(let j=0;j<3;j++){const h=.5+rand()*.8;rodBetween(reeds,[x,.03,z],[x+(rand()-.5)*.3,h,z],.018,darkLeaf);if(j===0)ball(reeds,x,h,z,.045,.16,.045,trunkMat);}}
+ const viewFocus=new THREE.Vector3();
  const creek = new THREE.Group();
- scene.add(creek);creek.add(buildCreek(gradient));
- const regions=buildRegions(gradient);scene.add(regions.group);
+ scene.add(creek);creek.add(buildCreek(gradient,viewFocus));
+ const regions=buildRegions(gradient,viewFocus);scene.add(regions.group);
  const sky=new THREE.Mesh(new THREE.SphereGeometry(1,24,12),new THREE.ShaderMaterial({
   side:THREE.BackSide,depthWrite:false,fog:false,
-  uniforms:{horizon:{value:new THREE.Color()}},
+  uniforms:{horizon:{value:new THREE.Color()},sunset:{value:0}},
   vertexShader:`varying vec3 dir;void main(){dir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
-  fragmentShader:`uniform vec3 horizon;varying vec3 dir;void main(){
+  fragmentShader:`uniform vec3 horizon;uniform float sunset;varying vec3 dir;void main(){
    vec3 d=normalize(dir);float h=smoothstep(-.04,.55,d.y);
    vec3 c=mix(horizon*1.07,horizon*vec3(.46,.72,1.03),h);
    vec2 p=d.xz/max(.06,d.y)*1.3;
    float wave=sin(p.x*1.23)+cos(p.y*1.7)+.45*sin(p.x*3.+p.y*2.)+.24*cos(p.y*4.4);
    float cloud=smoothstep(1.32,1.40,wave)*smoothstep(.09,.23,d.y);
    c=mix(c,horizon*vec3(1.36,1.28,1.15),cloud*.75);
+   float sunDot=dot(d,normalize(vec3(-1.,.115,.24)));
+   c+=sunset*vec3(1.,.43,.11)*(.36*pow(max(sunDot,0.),15.)+.92*smoothstep(.997,.999,sunDot));
    gl_FragColor=vec4(c,1.);
    #include <colorspace_fragment>
   }`
@@ -91,8 +94,10 @@ export async function createWorld(container,options={}) {
   scene.add(d);docks[id]=d;
  }
  const lake=createLake(scene,renderer);
+ sky.material.uniforms.sunset=lake.dusk;
  const focus=createLakeFocus(renderer);
  for(let i=0;i<21;i++){const x=-1.8+rand()*11,z=-6+rand()*12;if(x<1&&z>0&&z<4)continue;const pad=mesh(new THREE.CircleGeometry(.18+rand()*.23,16,.15,Math.PI*1.87),leafMat,decorations);pad.rotation.x=-Math.PI/2;pad.rotation.z=rand()*6.28;pad.position.set(x,-.095,z);pad.castShadow=false;if(i%4===0){for(let p=0;p<5;p++){const a=p*Math.PI*2/5;const f=ball(decorations,x+Math.cos(a)*.09,.025,z+Math.sin(a)*.09,.095,.06,.06,flowerMat);f.rotation.y=-a;}ball(decorations,x,.08,z,.04,.04,.04,cream);}}
+ const castTarget=new THREE.Vector3();let castView=0;
  const rippleObjects=[];
  function ripple(x,z,r,opacity=.6){const m=mesh(new THREE.RingGeometry(r,r+.012,64),waterLine.clone());m.rotation.x=-Math.PI/2;m.position.set(x,-.08,z);m.material.opacity=opacity;m.castShadow=false;m.receiveShadow=false;rippleObjects.push({m,base:r,phase:rand()*6});return m;}
  for(let i=0;i<38;i++){const x=-3.5-rand()*6.8,z=-4.8+rand()*6.2;if((x+7)**2+(z+3)**2>25)continue;const g=new THREE.Group();g.position.set(x,.35,z);decorations.add(g);rodBetween(g,[0,0,0],[0,.16,0],.012,darkLeaf);for(let p=0;p<5;p++){const a=p*6.28/5;ball(g,Math.cos(a)*.055,.17,Math.sin(a)*.055,.05,.03,.05,flowerMat);}}
@@ -160,14 +165,14 @@ export async function createWorld(container,options={}) {
   body.visible=false;wolfRoot.add(gltf.scene);modelHead=gltf.scene.getObjectByName('Head_Pivot');modelTail=gltf.scene.getObjectByName('Tail_Pivot');container.dataset.characterModel='blender-glb';
  }catch(error){console.warn('Blender character unavailable; using the original procedural blockout.',error.message);container.dataset.characterModel='procedural-fallback';}
  // Only nearby subjects contribute to the cached water reflection.
- for(const subject of [ambient,sun,rim,...Object.values(docks),boat,wolfRoot]){
+ for(const subject of [ambient,sun,rim,shore,hills,...Object.values(docks),boat,wolfRoot]){
   subject.traverse(object=>object.layers.enable(1));
  }
  let season='春',time='day',location='reed',onBoat=true,phaseStarted=0,disposed=false,frames=0,raf=0;
  let weather='晴',blend=null;
  scene.background=new THREE.Color();scene.fog=new THREE.Fog(0xffffff,27,69);
  const colors=[scene.fog.color,scene.background,lake.tint,groundMat.color,bankMat.color,leafMat.color,darkLeaf.color,flowerMat.color,hillMat.color,farHillMat.color,particleMat.color,ambient.color,sun.color];
- const scalars=[[sun,'intensity'],[ambient,'intensity'],[lampLight,'intensity'],[scene.fog,'near'],[scene.fog,'far']];
+ const scalars=[[lake.dusk,'value'],[lake.moonlight,'value'],[sun,'intensity'],[ambient,'intensity'],[rim,'intensity'],[lampLight,'intensity'],[scene.fog,'near'],[scene.fog,'far']];
  function snapshot(){return {colors:colors.map(c=>c.clone()),values:scalars.map(([obj,key])=>obj[key]),sun:sun.position.clone()};}
  function blendFrame(f){
   const {from,to}=blend;
@@ -176,16 +181,20 @@ export async function createWorld(container,options={}) {
   sun.position.lerpVectors(from.sun,to.sun,f);
   lake.environment(scene.background,sun.color,false);
  }
- function applyEnvironment(transition=false){const from=transition?snapshot():null;blend=null;const p=palettes[season];lake.tint.setHex(p.water);groundMat.color.setHex(p.ground);bankMat.color.setHex(season==='冬'?0xc4d4cb:0xa1b58e);leafMat.color.setHex(p.leaves);darkLeaf.color.setHex(p.leaves).multiplyScalar(.8);flowerMat.color.setHex(p.flowers);hillMat.color.setHex(p.hills);farHillMat.color.setHex(p.sky).lerp(new THREE.Color(p.hills),.45);particleMat.color.setHex(p.particle);let sky=p.sky;const view=LOCATIONS.find(p=>p.id===location).view;
+ function applyEnvironment(transition=false){const from=transition?snapshot():null;blend=null;const p=palettes[season];lake.tint.setRGB(1,1,1).lerp(new THREE.Color(p.water),.075);groundMat.color.setHex(p.ground);bankMat.color.setHex(season==='冬'?0xc4d4cb:0xa1b58e);leafMat.color.setHex(p.leaves);darkLeaf.color.setHex(p.leaves).multiplyScalar(.8);flowerMat.color.setHex(p.flowers);hillMat.color.setHex(p.hills);farHillMat.color.setHex(p.sky).lerp(new THREE.Color(p.hills),.45);particleMat.color.setHex(p.particle);let sky=p.sky;const view=LOCATIONS.find(p=>p.id===location).view;
   if(view.ground)groundMat.color.setHex(view.ground);
   if(view.leaves)leafMat.color.setHex(view.leaves);
 
-  const night=time==='night',dusk=time==='dusk';if(night){sky=0x697e85;lake.tint.multiplyScalar(.59);leafMat.color.multiplyScalar(.72);ambient.intensity=1.15;ambient.color.setHex(0xc0c9e7);sun.color.setHex(0xbcc9e9);sun.intensity=1.45;sun.position.set(-8,14,4);lampLight.intensity=3.2;particleMat.color.setHex(0xf0e4a5);}else{ambient.intensity=dusk?1.9:2.3;ambient.color.setHex(dusk?0xf6ddc0:0xfffde4);sun.color.setHex(dusk?0xf2cc9c:0xffeed0);sun.intensity=dusk?2.7:3.2;sun.position.set(dusk?-17:-10,dusk?11:19,10);lampLight.intensity=dusk?.6:0;if(dusk){sky=0xe7cdb8;lake.tint.lerp(new THREE.Color(0xd4c2a5),.2);}}if(time==='dawn'){sky=0xe6d9ce;sun.color.setHex(0xffd4ac);ambient.intensity=1.75;sun.intensity=2.2;sun.position.set(13,9,7);lake.tint.lerp(new THREE.Color(0xc7c3b4),.22);}
-  scene.background.setHex(sky);scene.fog.near=27;scene.fog.far=69;
-  if(weather==='薄雾'||weather==='细雨'){scene.background.lerp(new THREE.Color(0xb9c5bf),.26);scene.fog.near=weather==='薄雾'?10:20;scene.fog.far=weather==='薄雾'?38:55;sun.intensity*=.82;}
+  const night=time==='night',dusk=time==='dusk';if(night){sky=0x63728c;lake.tint.setRGB(.51,.54,.76);leafMat.color.multiplyScalar(.72);ambient.intensity=1.15;ambient.color.setHex(0xc0c9e7);sun.color.setHex(0xbcc9e9);sun.intensity=1.45;sun.position.set(-8,14,4);lampLight.intensity=3.2;particleMat.color.setHex(0xf0e4a5);}else{ambient.intensity=dusk?1.9:2.3;ambient.color.setHex(dusk?0xf6ddc0:0xfffde4);sun.color.setHex(dusk?0xf2cc9c:0xffeed0);sun.intensity=dusk?2.7:3.2;sun.position.set(dusk?-17:-10,dusk?11:19,10);lampLight.intensity=dusk?.6:0;if(dusk){sky=0xe7cdb8;lake.tint.lerp(new THREE.Color(0xd4c2a5),.2);}}if(time==='dawn'){sky=0xe6d9ce;sun.color.setHex(0xffd4ac);ambient.intensity=1.75;sun.intensity=2.2;sun.position.set(13,9,7);lake.tint.lerp(new THREE.Color(0xc7c3b4),.22);}
+  lake.dusk.value=dusk?1:0;lake.moonlight.value=night?1:dusk?.28:0;
+  scene.background.setHex(sky);scene.fog.near=13;scene.fog.far=53;
+  if(weather==='薄雾'||weather==='细雨'){scene.background.lerp(new THREE.Color(0xb9c5bf),.26);scene.fog.near=weather==='薄雾'?7:10;scene.fog.far=weather==='薄雾'?35:44;sun.intensity*=.82;}
 
-  if(view){lake.tint.lerp(new THREE.Color(view.water).multiplyScalar(night?.52:dusk?.82:1),.52);scene.background.lerp(new THREE.Color(view.sky).multiplyScalar(night?.23:dusk?.7:1),.28);sun.intensity*=view.light;}
-  if(!night){const original=location==='reed'||location==='sakura';lake.tint.lerp(new THREE.Color(original?0x4fa99d:view.water),.66);scene.background.lerp(new THREE.Color(dusk?0xe4b991:original?0x9bcce1:view.sky),.66);ambient.intensity*=.78;sun.intensity*=.84;}
+  if(view){scene.background.lerp(new THREE.Color(view.sky).multiplyScalar(night?.23:dusk?.7:1),.28);sun.intensity*=view.light;}
+  if(!night){const original=location==='reed'||location==='sakura';scene.background.lerp(new THREE.Color(dusk?0xe4b991:original?0x9bcce1:view.sky),.66);ambient.intensity*=.78;sun.intensity*=.84;}
+  if(location==='tide' && dusk){scene.background.lerp(new THREE.Color(0xffbb80),.53);sun.color.setHex(0xffc276);sun.position.set(-19,7,4.6);rim.intensity=1;}
+  else rim.intensity=.75;
+  if(location==='moon' && night)scene.background.lerp(new THREE.Color(0x64618e),.65);
   scene.fog.color.copy(scene.background);if(view)scene.fog.color.lerp(new THREE.Color(view.fog).multiplyScalar(night?.23:1),.25);renderer.setClearColor(scene.background);lake.environment(scene.background,sun.color);
   if(from){blend={from,to:snapshot(),start:performance.now()};blendFrame(0);}
  }
@@ -205,7 +214,7 @@ export async function createWorld(container,options={}) {
   if(!onBoat){navigation.reset();lake.resetWake();}
   boatFrame.visible=onBoat;
   (onBoat?boat:scene).add(wolfRoot);
-  (onBoat?boatFrame:scene).add(bobber,bobberRipple);
+  scene.add(bobber,bobberRipple);
   if(onBoat){
    wolfRoot.position.set(0,.57,-.15);wolfRoot.rotation.set(0,.34,0);
    bobber.position.set(3.15,0,1.9);
@@ -232,7 +241,28 @@ export async function createWorld(container,options={}) {
  let waypoint=null,waypointId=null;
  function trackLanding(id){waypointId=id;waypoint=landings[id] || null;}
  function setFishing(next){
-  phaseStarted=performance.now();if(next==='cast')boxOpen=false;lake.invalidate();
+  phaseStarted=performance.now();
+  if(next==='cast'){
+   boxOpen=false;
+   const nav=navigation.snapshot(),port=landings[location];
+   const yaw=onBoat?chaseYaw+chaseOrbit:Math.atan2(port.x-wolfRoot.position.x,port.z-wolfRoot.position.z);
+   const x=onBoat?nav.x:port.x,z=onBoat?nav.z:port.z;
+   // Cast into visible open water even when the bow is pointing into a bank.
+   castTarget.set(x,-.09,z);
+   let best=-Infinity;
+   for(const offset of [-.46,.36,-.9,.9,-1.55,1.55,Math.PI]){
+    for(const dist of [4.8,3.5,2.4]){
+     const tx=x+Math.sin(yaw+offset)*dist,tz=z+Math.cos(yaw+offset)*dist,d=waterDepth(tx,tz);
+     if(d<.5)continue;
+     const score=dist-.97*Math.abs(offset)+.24*Math.min(2.8,d);
+     if(score>best){best=score;castTarget.set(tx,-.09,tz);}
+    }
+   }
+   bobberRipple.position.copy(castTarget);
+  }
+  if(next==='wait' && !reduced)lake.splash(castTarget.x,castTarget.z);
+  if(next==='idle'||next==='result'||next==='cast')lake.clearSplash();
+  lake.invalidate();
  }
  function setCatchQuality(stars){particleMat.color.setHex(stars>=5?0xf8e4a9:palettes[season].particle);}
  function resize(){const w=container.clientWidth||1440,h=container.clientHeight||960;const ratio=Math.min(devicePixelRatio,w<=650?1.25:1.75);renderer.setPixelRatio(ratio);renderer.setSize(w,h);focus.resize(w,h,ratio);lake.resize(w,h);const view=h>w?14:15.5;overhead.left=-view*w/h/2;overhead.right=view*w/h/2;overhead.top=view/2;overhead.bottom=-view/2;overhead.updateProjectionMatrix();chase.aspect=w/h;chase.updateProjectionMatrix();}
@@ -268,7 +298,9 @@ export async function createWorld(container,options={}) {
    if(navigation.reachedDestination(waypoint))options.onDockArrival?.();
   }
   regions.update(t*motion,time==='night'||time==='dusk');
-  frames++;zoom+=(targetZoom-zoom)*.08;camera.zoom=zoom;camera.updateProjectionMatrix();
+  const phase=options.getFishingPhase(),angling=phase!=='idle'&&phase!=='result';
+  castView=reduced?Number(angling):THREE.MathUtils.damp(castView,Number(angling),5,dt);
+  frames++;zoom+=(targetZoom-zoom)*.08;camera.zoom=zoom*(camera===overhead?1+.34*castView:1);camera.updateProjectionMatrix();
   let angle=orbit;
   if(camera===chase){
    const advance=(nav.x-lastTurnX)*travelSign;
@@ -280,29 +312,41 @@ export async function createWorld(container,options={}) {
    const delta=course-chaseYaw;
    chaseYaw+=Math.atan2(Math.sin(delta),Math.cos(delta))*(1-Math.exp(-4*dt));
    angle=chaseYaw+Math.PI+chaseOrbit;
-   const fishing=options.getFishingPhase()!=='idle',distance=fishing?6.8:8.7;
+   const backX=Math.sin(angle),backZ=Math.cos(angle),side=Math.min(2.8,chase.aspect*2.35);
    const moonView=Math.max(0,1-Math.hypot(nav.x-landings.moon.x,nav.z-landings.moon.z)/9);
-   target.set(nav.x-Math.sin(angle)*(fishing?.65:4.1),fishing?1.1:1.7+moonView*.85,nav.z-Math.cos(angle)*(fishing?.65:4.1));
-   camera.position.set(nav.x+Math.sin(angle)*distance,fishing?3.6:3.55,nav.z+Math.cos(angle)*distance);
-   const left=bankZ(camera.position.x,1),right=bankZ(camera.position.x,2),inset=Math.min(1.9,(right-left)*.35);
-   if(original)camera.position.z=THREE.MathUtils.clamp(camera.position.z,left+inset,right-inset);
-   // Shorten the boom when a convex bank cuts the line from stern to camera.
+   target.set(nav.x-backX*6.1+backZ*side,1.0+moonView*.65,nav.z-backZ*6.1-backX*side);
+   camera.position.set(nav.x+backX*11.6+backZ*side,6.1,nav.z+backZ*11.6-backX*side);
+   if(castView>.001){
+    target.lerp(castTarget,castView);
+    // Shift to the float side of the boat; the angler stays out of the sight line.
+    camera.position.x=THREE.MathUtils.lerp(camera.position.x,castTarget.x+backX*5.9+backZ*2.1,castView);
+    camera.position.z=THREE.MathUtils.lerp(camera.position.z,castTarget.z+backZ*5.9-backX*2.1,castView);
+    camera.position.y=THREE.MathUtils.lerp(camera.position.y,4.55,castView);
+   }
+   // Low reeds and shoals need no boom shortening. Lift above a genuine ridge.
    for(let i=1;i<=8;i++){
-    const f=i/8,x=THREE.MathUtils.lerp(nav.x,camera.position.x,f),z=THREE.MathUtils.lerp(nav.z,camera.position.z,f);
-    if((original?outerDepth(x,z):waterDepth(x,z))>.3)continue;
-    const clear=Math.max(.42,(i-1)/8);
-    camera.position.x=THREE.MathUtils.lerp(nav.x,camera.position.x,clear);
-    camera.position.z=THREE.MathUtils.lerp(nav.z,camera.position.z,clear);
-    break;
+    const f=i/8,x=THREE.MathUtils.lerp(target.x,camera.position.x,f),z=THREE.MathUtils.lerp(target.z,camera.position.z,f);
+    const h=terrainHeight(x,z)+.45;
+    if(h>THREE.MathUtils.lerp(target.y,camera.position.y,f))camera.position.y=Math.min(11,Math.max(camera.position.y,target.y+(h-target.y)/f));
+   }
+   // Ease the boom through the same arch opening as the hull.
+   const {mid,radius,spring,rise}=bridgeArch;
+   const portal=(1-THREE.MathUtils.smoothstep(Math.abs(camera.position.x-bridgeX),1.4,7.5))*
+    (1-THREE.MathUtils.smoothstep(Math.abs(nav.z-mid),radius+1,radius+5));
+   if(portal>0){
+    camera.position.z=THREE.MathUtils.lerp(camera.position.z,THREE.MathUtils.clamp(camera.position.z,mid-radius*.52,mid+radius*.52),portal);
+    const offset=(camera.position.z-mid)/radius,archTop=spring+rise*Math.sqrt(Math.max(.25,1-offset*offset));
+    camera.position.y=THREE.MathUtils.lerp(camera.position.y,Math.min(camera.position.y,archTop-1.1),portal);
    }
   }else{
-   target.x+=(wolfRoot.position.x-target.x)*.12;
-   target.z+=(wolfRoot.position.z-target.z)*.12;target.y=.8;
+   target.x+=(THREE.MathUtils.lerp(wolfRoot.position.x,castTarget.x,castView)-target.x)*.12;
+   target.z+=(THREE.MathUtils.lerp(wolfRoot.position.z,castTarget.z,castView)-target.z)*.12;target.y=.8*(1-castView);
    camera.position.set(target.x+Math.sin(angle)*21,12.8,target.z+Math.cos(angle)*21);
   }
   sunRig.position.set(Math.round(nav.x/3)*3,0,Math.round(nav.z/3)*3);
   sky.visible=camera===chase;
   if(sky.visible){sky.position.copy(camera.position);sky.material.uniforms.horizon.value.copy(scene.background);}
+  viewFocus.set(nav.x,0,nav.z).lerp(castTarget,castView);
   camera.lookAt(target);
   if(waypoint && nav.sailing && !nav.paused){
    const next=bearingPoint(nav.x,nav.z,waypointId),dx=next.x-nav.x,dz=next.z-nav.z;
@@ -313,7 +357,6 @@ export async function createWorld(container,options={}) {
   if(onBoat){boatFrame.position.set(nav.x,0,nav.z);boatFrame.rotation.y=nav.heading;boat.position.y=.02+Math.sin(t*1.1)*.035*motion;boat.rotation.z=Math.sin(t*.9)*.012*motion;paddle.rotation.z=nav.sailing&&nav.speed>.1?Math.sin(t*5)*.2:0;}
   head.rotation.z=Math.sin(t*.6)*.025*motion;tailRoot.rotation.y=Math.sin(t*1.4)*.075*motion;if(modelHead)modelHead.rotation.z=Math.sin(t*.6)*.025*motion;if(modelTail)modelTail.rotation.y=Math.sin(t*1.4)*.075*motion;
   for(const r of rippleObjects){const s=1+Math.sin(t*.6+r.phase)*.08*motion;r.m.scale.setScalar(s);}
-  const phase=options.getFishingPhase();
   const nod=Math.min(1,(performance.now()-baitChanged)/780);
   (modelHead||head).rotation.x=phase==='idle'?Math.sin(Math.PI*nod)*.19*motion:0;
   const lidAngle=boxOpen?-1.45:0;

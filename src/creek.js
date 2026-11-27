@@ -1,19 +1,20 @@
 import * as T from '../vendor/three.module.js';
-import {bankZ,bridgeX} from './data.js';
+import {bankZ,bridgeX,bridgeArch} from './data.js';
 import {batchRigidMeshes} from './boat.js';
 import {outerDepth,terrainHeight} from './waterways.js';
 
 // All silhouettes, including the waterline under the bridge, use the sailing coordinates.
-export function buildCreek(gradient){
+export function buildCreek(gradient,viewFocus){
  const group=new T.Group();
  const color=c=>new T.MeshToonMaterial({color:c,gradientMap:gradient});
  const grass=color(0x96ad61),sand=color(0xcdba83),stone=color(0x827e70),moss=color(0x627753);
  const bark=color(0x674939),pinks=[0xe39aa8,0xf2bfbd,0xbf788b].map(color);
  const foliage=[0x708a4e,0x879f53,0xa5b965].map(color),gold=color(0xcaac64);
  const lump=new T.IcosahedronGeometry(1,0),crown=new T.IcosahedronGeometry(1,1);
+ let treeBase=null;
  let seed=145;const random=()=>((seed=seed*16807%2147483647)-1)/2147483646;
  function piece(geometry,material,x,y,z,sx=1,sy=1,sz=1){
-  const mesh=new T.Mesh(geometry,material);mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);group.add(mesh);return mesh;
+  const mesh=new T.Mesh(geometry,material);mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);if(treeBase)mesh.userData.treeBase=treeBase;group.add(mesh);return mesh;
  }
  function limb(a,b,r,tip){
   const start=new T.Vector3(...a),end=new T.Vector3(...b),v=end.clone().sub(start);
@@ -26,6 +27,7 @@ export function buildCreek(gradient){
  function blossom(x,z,k,lean){
   const y=terrainHeight(x,z);
   if(outerDepth(x,z)>0)return;
+  treeBase=[x,z];
   const joint=[x+.35*k,y+1.75*k,z+lean*.75*k];
   const crook=[x-.38*k,y+.83*k,z+.4*k*lean];
   limb([x,y-.16,z],crook,.53*k,.4*k);limb(crook,joint,.41*k,.29*k);
@@ -46,6 +48,7 @@ export function buildCreek(gradient){
     }
    }
   }
+  treeBase=null;
  }
  blossom(12,bankZ(12,1)-1,1.85,1);
  for(const [x,side,k] of [[20.5,2,.88],[24,1,.78],[34.5,2,1.02],[36.5,1,.85],[40,2,1.22]]){
@@ -55,11 +58,13 @@ export function buildCreek(gradient){
   const x=-11+random()*54,side=i%2+1,sign=side===1?-1:1;
   const z=bankZ(x,side)+sign*(3.4+random()*6),y=terrainHeight(x,z),k=.6+random()*1.35;
   if((x<9 && side===2 && i%3)||outerDepth(x,z)>-.25)continue;
+  treeBase=[x,z];
   limb([x,y-.2,z],[x+.12,y+1.9*k,z],.17*k,.1*k);
   for(let j=0;j<6;j++){
    const t=j*2.39+i,r=j<4?1:.48;
    piece(lump,foliage[(i+j)%3],x+Math.cos(t)*r*k,y+(1.8+j*.19)*k,z+Math.sin(t)*r*k,(1.05+r*.35)*k,.88*k,1.25*k).rotation.y=t;
   }
+  treeBase=null;
  }
  for(let i=0;i<115;i++){
   const x=-10+random()*23,side=i%2+1,sign=side===1?-1:1,z=bankZ(x,side)+sign*(random()*.85);
@@ -72,9 +77,9 @@ export function buildCreek(gradient){
   piece(lump,i%4?stone:moss,x,0,bankZ(x,side)+sign*.28,k*1.35,k*.7,k).rotation.y=i;
  }
  // Arch is hollow geometry; its feet sit beyond the navigable banks.
- const north=bankZ(bridgeX,1),south=bankZ(bridgeX,2),mid=(north+south)/2,r=(south-north)/2;
- const arch=new T.Shape();arch.moveTo(-r-1.6,-.45);arch.lineTo(-r,-.45);arch.lineTo(-r,.4);
- arch.absellipse(0,.4,r,4.7,Math.PI,0,true);arch.lineTo(r,-.45);arch.lineTo(r+1.6,-.45);arch.lineTo(r+1.6,3.05);
+ const {mid,radius:r,spring,rise:archRise}=bridgeArch;
+ const arch=new T.Shape();arch.moveTo(-r-1.6,-.45);arch.lineTo(-r,-.45);arch.lineTo(-r,spring);
+ arch.absellipse(0,spring,r,archRise,Math.PI,0,true);arch.lineTo(r,-.45);arch.lineTo(r+1.6,-.45);arch.lineTo(r+1.6,3.05);
  arch.quadraticCurveTo(0,9.2,-r-1.6,3.05);arch.closePath();
  const span=new T.ExtrudeGeometry(arch,{depth:1.45,bevelEnabled:false,curveSegments:24});
  piece(span,stone,bridgeX-.725,0,mid).rotation.y=Math.PI/2;
@@ -82,7 +87,7 @@ export function buildCreek(gradient){
  for(const face of [-.8,.8])for(let i=0;i<17;i++){
   const a=Math.PI*i/17,b=Math.PI*(i+1)/17-.015,block=new T.Shape();
   for(const [n,[angle,offset]] of [[a,0],[a,.46],[b,.46],[b,0]].entries()){
-   const x=Math.cos(angle)*(r+offset),y=.4+Math.sin(angle)*(4.7+offset);
+   const x=Math.cos(angle)*(r+offset),y=spring+Math.sin(angle)*(archRise+offset);
    if(n===0)block.moveTo(x,y);else block.lineTo(x,y);
   }
   block.closePath();piece(new T.ExtrudeGeometry(block,{depth:.09,bevelEnabled:false}),trim[i%3],bridgeX+face,0,mid).rotation.y=Math.PI/2;
@@ -97,7 +102,7 @@ export function buildCreek(gradient){
   const a=i*Math.PI/12,k=5+random()*7;
   piece(lump,i%2?colorMountainA:colorMountainB,20+Math.cos(a)*75,-2.5,20+Math.sin(a)*65,10+random()*8,k,9).rotation.y=a;
  }
- batchRigidMeshes(group);group.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
+ batchRigidMeshes(group,null,viewFocus);group.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
  return group;
 }
 const colorMountainA=new T.MeshBasicMaterial({color:0x9eb8ac}),colorMountainB=new T.MeshBasicMaterial({color:0xbac7b0});

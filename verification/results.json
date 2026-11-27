@@ -1,7 +1,7 @@
 {
   "httpStatus": 200,
   "webglReady": true,
-  "renderFrames": "120",
+  "renderFrames": "90",
   "fishCount": 36,
   "uniqueFishActuallyCaught": 1,
   "currencyAfterTravelBuyCatch": 277,
