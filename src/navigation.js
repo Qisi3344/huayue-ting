@@ -1,42 +1,16 @@
-import {LOCATIONS,bankZ} from './data.js';
+import {landings,chartPoint,waterDepth} from './waterways.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-export const landings = Object.fromEntries(LOCATIONS.filter(p=>p.routeTo).map(p=>[p.id,p.water.spawn]));
-export function otherLanding(id) {
- return LOCATIONS.find(p=>p.id===id)?.routeTo ?? null;
-}
-
-// Project the shared sailing route onto its two pins on the illustrated map.
 export function mapPosition(locations,id,nav){
- const area=locations.find(place=>place.id===id);
- if(!nav?.onBoat)return {x:area.x,y:area.y};
- const origin=area.water.spawn,dx=nav.x-origin.x,dz=nav.z-origin.z;
- const end=locations.find(place=>place.id===area.routeTo);
- let x=area.x+dx*.9,y=area.y+dz*.9;
- if(end){
-  const span=end.water.spawn.x-origin.x;
-  const eastX=(end.x-area.x)/span,eastY=(end.y-area.y)/span;
-  x=area.x+dx*eastX-dz*eastY;y=area.y+dx*eastY+dz*eastX;
- }
- return {x:clamp(x,6,94),y:clamp(y,8,92)};
+ if(nav?.onBoat)return chartPoint(nav.x,nav.z);
+ const p=locations.find(p=>p.id===id);return {x:p.x,y:p.y};
 }
 
 export function createNavigation(){
  let x=.25,z=1.6,vx=0,vz=0,ix=0,iz=0,sailing=true,paused=false,onBoat=true,heading=-.27;
  let harbor = 'reed';
- let water=LOCATIONS[0].water;
- function dock(){return water.spawn;}
+ function dock(){return landings[harbor];}
  function snapshot(){return{x,z,vx,vz,paddling:Boolean(ix||iz),sailing,paused,onBoat,heading,speed:Math.hypot(vx,vz),nearDock:Math.hypot(x-dock().x,z-dock().z)<1.25};}
- function clearance(a,b){
-  const [left,right,top,bottom]=water.bounds;
-  let margin=Math.min(a-left,right-a,b-top,bottom-b);
-  if(water.channel)margin=Math.min(margin,b-bankZ(a,1)-.85,bankZ(a,2)-b-.85);
-  for(const o of water.obstacles){
-   // Leave room for the hull outside the visible waterline.
-   const distance=(Math.hypot((a-o.x)/o.rx,(b-o.z)/o.rz)-1)*Math.min(o.rx,o.rz);
-   margin=Math.min(margin,distance-.55);
-  }
-  return margin;
- }
+ function clearance(a,b){return waterDepth(a,b)-.85;}
  function navigable(a,b){return clearance(a,b)>=0;}
  return{
   snapshot,
@@ -44,11 +18,11 @@ export function createNavigation(){
   setSailing(value){sailing=Boolean(value);ix=0;iz=0;vx=0;vz=0;},
   setPaused(value){paused=Boolean(value);if(paused){ix=0;iz=0;vx=0;vz=0;}},
   setOnBoat(value){onBoat=Boolean(value);if(!onBoat){sailing=false;vx=0;vz=0;ix=0;iz=0;}},
-  setHarbor(id){const place=LOCATIONS.find(p=>p.id===id);if(place){harbor=id;water=place.water;}},
-  reachedDestination(target=landings[otherLanding(harbor)]){
+  setHarbor(id){if(landings[id])harbor=id;},
+  reachedDestination(target){
    return Boolean(target && sailing && onBoat && !paused && Math.hypot(x-target.x,z-target.z)<1.25);
   },
-  reset(){x=dock().x;z=dock().z;vx=0;vz=0;ix=0;iz=0;heading=water.channel?(dock().x<10?Math.PI/2:-Math.PI/2):-.27;sailing=false;},
+  reset(){x=dock().x;z=dock().z;vx=0;vz=0;ix=0;iz=0;heading=({reed:Math.PI/2,sakura:-Math.PI/2,falls:1.2,snow:.25,tide:-1.3,moon:.45})[harbor];sailing=false;},
   step(seconds){const dt=clamp(Number(seconds)||0,0,.2);if(!sailing||paused||!onBoat||!dt)return snapshot();const response=1-Math.exp(-8*dt);vx+=(ix*2.6-vx)*response;vz+=(iz*2.6-vz)*response;const margin=clearance(x,z);
    if(margin<1.2){
     const gx=(clearance(x+.02,z)-clearance(x-.02,z))/.04,gz=(clearance(x,z+.02)-clearance(x,z-.02))/.04;

@@ -2,7 +2,7 @@ import {drawAtlas,createMinimap,markerNames,paintMarker} from './minimap.js';
 import {advanceClock,restoreClock,weatherOf} from './almanac.js';
 import {bindDial,bindJoystick,bindIdle} from './lakeside-ui.js';
 import {SEASONS,TIMES,LOCATIONS,BAITS,RODS,FISH,ACHIEVEMENTS,eligibleFish,chooseFish} from './data.js';
-import {mapPosition,otherLanding} from './navigation.js';
+import {mapPosition} from './navigation.js';
 import {drawFish} from './fish-art.js';
 const $=s=>document.querySelector(s);
 const KEY='huayue-cove-save-v1';
@@ -130,7 +130,7 @@ function showBearing(angle,distance){
 }
 $('#cancelWaypoint').onclick=()=>trackDestination(null);
 function arrive(id){
- if(!sailing || id!==otherLanding(state.location)) return;
+ if(!sailing || id===state.location) return;
  state.location=id;
  world.setLocation(id,true);
  if(!state.visited.includes(id)) state.visited.push(id);
@@ -143,13 +143,13 @@ function travel(id,mode){
  const next=LOCATIONS.find(l=>l.id===id);
  if(!next||busy()||!world)return;
  if(mode==='sail'){
-  if(id!==otherLanding(state.location))return;
+  if(id===state.location && world.getNavigation().nearDock)return;
   if(panel.open)panel.close();
   if(startSailing())trackDestination(id);
   return;
  }
  if(mode==='ferry'){
-  if(!atFerryDock()||next.routeTo||state.visited.includes(id))return;
+  if(!atFerryDock()||['reed','sakura'].includes(id)||state.visited.includes(id))return;
  }else if(mode!=='teleport'||!state.visited.includes(id))return;
  stopSailing();state.location=id;if(next.boat)state.boat=true;
  world.setLocation(id);world.setBoat(state.boat);
@@ -283,9 +283,8 @@ function renderMap(){
   const place=LOCATIONS.find(p=>p.id===pin.dataset.location),known=state.visited.includes(place.id);
   const actions=[{label:'传送',run:known?()=>travel(place.id,'teleport'):null}];
   let note=known?'':'尚未探索';
-  if(place.id===otherLanding(state.location))actions.push({label:'划船前往',run:()=>travel(place.id,'sail')});
-  else if(!known && !place.routeTo && atFerryDock())actions.push({label:'搭渡船',run:()=>travel(place.id,'ferry')});
-  else if(!known)note+=place.routeTo?' · 从芦眠浅湾划船抵达':' · 到码头搭渡船';
+  if(place.id!==state.location || !world.getNavigation().nearDock)actions.push({label:'划船前往',run:()=>travel(place.id,'sail')});
+  if(!known && !['reed','sakura'].includes(place.id) && atFerryDock())actions.push({label:'搭渡船',run:()=>travel(place.id,'ferry')});
   showBubble(pin,place.x,place.y,place.name,actions,note);
  };
  $('#returnDockBtn').onclick=()=>{panel.close();stopSailing();world?.returnDock();announceLocation();};

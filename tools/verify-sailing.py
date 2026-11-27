@@ -7,7 +7,7 @@ out = root / 'verification'
 url = os.environ.get('HUAYUE_URL', 'http://127.0.0.1:4173/')
 with sync_playwright() as pw:
     browser = pw.chromium.launch(executable_path=str(Path(os.environ['LOCALAPPDATA'])/'Google/Chrome/Application/chrome.exe'),
-                                 args=['--use-angle=swiftshader','--enable-unsafe-swiftshader'])
+                                 args=['--use-angle='+os.environ.get('HUAYUE_ANGLE','swiftshader'),'--enable-unsafe-swiftshader'])
     page = browser.new_page(viewport={'width':1080,'height':720},has_touch=True)
     errors = []
     page.on('pageerror',lambda error: errors.append(str(error)))
@@ -50,8 +50,8 @@ with sync_playwright() as pw:
           return [parseFloat(el.style.left),parseFloat(el.style.top),-m.c,-m.d,n.x,n.z];
         }""")
         u,v,east,south,x,z=sample
-        half=(61**2+34**2)**.5*.53
-        assert abs(u-(.5+(x-14.5)/(2*half))*100)<.002 and abs(v-(.5+(z-1)/(2*half))*100)<.002,sample
+        half=(85**2+81**2)**.5*.53
+        assert abs(u-(.5+(x-24.5)/(2*half))*100)<.002 and abs(v-(.5+(z-24.5)/(2*half))*100)<.002,sample
         assert (east if axis=='x' else south)*sign>.95,sample
     assert page.evaluate("firstChart===document.querySelector('#minimapBase canvas')")
     page.click('#boatBtn')
@@ -62,7 +62,7 @@ with sync_playwright() as pw:
     assert page.evaluate("window.__HUAYUE__.getState().location==='reed'")
     assert page.get_by_role('button',name='传送',exact=True).is_disabled()
     page.get_by_role('button',name='搭渡船').click()
-    assert page.evaluate("firstChart!==document.querySelector('#minimapBase canvas')")
+    assert page.evaluate("firstChart===document.querySelector('#minimapBase canvas')")
     page.click('#minimap')
     page.click('[data-location="reed"]')
     page.get_by_role('button',name='传送',exact=True).click()
@@ -136,10 +136,13 @@ with sync_playwright() as pw:
     page.screenshot(path=out/'20-touch-sailing.png')
     touch('touchEnd',[])
     assert page.locator('#joystick').is_hidden()
-    page.tap('#castBtn')
+    button=page.locator('#castBtn').bounding_box()
+    tap_x,tap_y=button['x']+button['width']/2,button['y']+button['height']/2
+    page.touchscreen.tap(tap_x,tap_y)
     page.wait_for_function("window.__HUAYUE__.getPhase()==='wait'")
     assert page.locator('[data-open="bait"]').is_disabled()
-    page.tap('#castBtn')
+    page.touchscreen.tap(tap_x,tap_y)
+    assert page.evaluate("window.__HUAYUE__.getPhase()==='idle'")
     page.tap('[data-open="bait"]')
     page.tap('[data-equip="grain"]')
     page.tap('#castBtn')

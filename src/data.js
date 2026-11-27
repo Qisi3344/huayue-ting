@@ -1,12 +1,5 @@
 export const SEASONS = ['春','夏','秋','冬'];
 export const TIMES = {dawn:'清晨',day:'日间',dusk:'黄昏',night:'夜晚'};
-// Shore ellipses and landing positions use the same X/Z units as the boat.
-const home={x:.25,z:1.6},creekDock={x:36,z:1.6};
-const island={x:-7,z:-3,rx:6.15,rz:5.7};
-const creekIsland={x:37,z:-6,rx:5.1,rz:4.7};
-function water(bounds,shore,outer,extra=[]){
- return {bounds,spawn:home,banks:[shore,outer],obstacles:[shore,outer,...extra]};
-}
 // Cross sections in world metres: east X, north bank Z, south bank Z.
 export const channel=[[-16,2,2],[-13,-6,10],[-7,-12,15],[1,-14,15],[7,-11,13],[12,-5,11],[16,3.4,13.1],[20,8.8,16.4],[23,4.3,12.5],[27,-1,7],[30,-3.6,6.5],[35,-5,8],[40,-4,7],[45,2,2]];
 export const bridgeX=31;
@@ -16,12 +9,6 @@ export function bankZ(x,side){
  const a=channel[i-1],b=channel[i];
  return a[side]+(b[side]-a[side])*(x-a[0])/(b[0]-a[0]);
 }
-const ferryWater=water([-16,45,-16,18],island,{x:-13,z:5,rx:5.7,rz:3.9},[creekIsland]);
-ferryWater.channel=channel;
-const snowWater=water([-19,24,-17,21],{...island,rz:6.5},{x:7,z:-6,rx:5,rz:2.1});
-const fallsWater=water([-16,22,-19,18],{...island,rx:6.5},{x:6.4,z:-10,rx:4.1,rz:3},[{x:5.5,z:-7,rx:1.6,rz:1.3}]);
-const tideWater=water([-22,30,-16,17],{...island,rz:4.9},{x:7,z:-6,rx:6,rz:1.5});
-const moonWater=water([-20,24,-20,22],{...island,rx:5.8},{x:6,z:-7,rx:2.6,rz:2.5});
 const reedView={water:0x87c4a3,sky:0xe1efcd,fog:0xdce7bb,light:1,hills:.74,plant:'reed',count:80};
 const snowView={water:0x76abc6,sky:0xc3deec,fog:0xe3f2f5,light:.91,hills:1.4,plant:'pine',count:18,ground:0xe2e8df,leaves:0xbacbc2,landmark:'ice'};
 const fallsView={water:0x579f94,sky:0xa8d2bf,fog:0xaacbbd,light:.8,hills:1.75,plant:'fern',count:52,landmark:'falls'};
@@ -29,12 +16,12 @@ const sakuraView={...reedView,water:0x9ccac5,sky:0xffe8da,landmark:'blossom'};
 const tideView={water:0x85c7c2,sky:0xf3e6c1,fog:0xe2d7ad,ground:0xdfcda6,light:1.03,hills:.44,landmark:'shell'};
 const moonView={water:0x92a6bd,sky:0xd7d5e4,fog:0xc2bbd1,light:.92,hills:1.1,landmark:'arch'};
 export const LOCATIONS = [
- {id:'reed',routeTo:'sakura',view:reedView,water:ferryWater,name:'芦眠浅湾',en:'REEDWATER',x:27,y:61,color:'#88b7a1',tag:'初次相遇的地方',description:'风穿过芦苇，木码头晒得暖暖的。岸边与小船都能垂钓。',boat:false},
- {id:'sakura',routeTo:'reed',creekPier:true,view:sakuraView,water:{...ferryWater,spawn:creekDock},name:'落樱溪',en:'PETAL CREEK',x:40,y:30,color:'#d6a4b0',tag:'顺着花瓣往上游',description:'溪水带来落花。春天的黄昏，水下也会有一场花开。',boat:false},
- {id:'falls',view:fallsView,water:fallsWater,name:'萤瀑林',en:'FIREFLY FALLS',x:67,y:27,color:'#83a798',tag:'夜色里有另一条河',description:'瀑布脚下住着喜欢急流的小鱼，晚上有萤光陪你。',boat:false},
- {id:'snow',view:snowView,water:snowWater,name:'霜镜湖',en:'FROSTMIRROR',x:80,y:51,color:'#9eb7cb',tag:'冬天也值得出门',description:'雪松围着不结冰的泉眼，白气和雪花都慢慢往上飘。',boat:false},
- {id:'tide',view:tideView,water:tideWater,name:'琥珀潮汐',en:'AMBER TIDE',x:62,y:76,color:'#c5b28c',tag:'把船划到海风里',description:'有贝壳的沙洲与安静的潮池。小船能载你去更深的水。',boat:false},
- {id:'moon',view:moonView,water:moonWater,name:'月心浮岛',en:'MOONHEART',x:51,y:51,color:'#afa6c5',tag:'只有小船能抵达',description:'在湖心停桨，点起一盏灯。星光会一点一点沉进水里。',boat:true}
+ {id:'reed',view:reedView,name:'芦眠浅湾',en:'REEDWATER',x:27,y:61,color:'#88b7a1',tag:'初次相遇的地方',description:'风穿过芦苇，木码头晒得暖暖的。岸边与小船都能垂钓。',boat:false},
+ {id:'sakura',view:sakuraView,name:'落樱溪',en:'PETAL CREEK',x:40,y:30,color:'#d6a4b0',tag:'顺着花瓣往上游',description:'溪水带来落花。春天的黄昏，水下也会有一场花开。',boat:false},
+ {id:'falls',view:fallsView,name:'萤瀑林',en:'FIREFLY FALLS',x:67,y:27,color:'#83a798',tag:'夜色里有另一条河',description:'瀑布脚下住着喜欢急流的小鱼，晚上有萤光陪你。',boat:false},
+ {id:'snow',view:snowView,name:'霜镜湖',en:'FROSTMIRROR',x:80,y:51,color:'#9eb7cb',tag:'冬天也值得出门',description:'雪松围着不结冰的泉眼，白气和雪花都慢慢往上飘。',boat:false},
+ {id:'tide',view:tideView,name:'琥珀潮汐',en:'AMBER TIDE',x:62,y:76,color:'#c5b28c',tag:'把船划到海风里',description:'有贝壳的沙洲与安静的潮池。小船能载你去更深的水。',boat:false},
+ {id:'moon',view:moonView,name:'月心浮岛',en:'MOONHEART',x:51,y:51,color:'#afa6c5',tag:'只有小船能抵达',description:'在湖心停桨，点起一盏灯。星光会一点一点沉进水里。',boat:true}
 ];
 export const BAITS = [
  {id:'grain',name:'谷香团',price:20,amount:5,description:'麦粒与米香。所有鱼都吃的安心选择。',color:'#c1a56c'},

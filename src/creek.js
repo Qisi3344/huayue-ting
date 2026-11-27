@@ -1,7 +1,7 @@
 import * as T from '../vendor/three.module.js';
-import {bankZ,bridgeX,channel} from './data.js';
+import {bankZ,bridgeX} from './data.js';
 import {batchRigidMeshes} from './boat.js';
-import {waterHeight} from './lake.js';
+import {outerDepth,terrainHeight} from './waterways.js';
 
 // All silhouettes, including the waterline under the bridge, use the sailing coordinates.
 export function buildCreek(gradient){
@@ -21,24 +21,11 @@ export function buildCreek(gradient){
   mesh.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),v.normalize());
  }
  function rise(x,side){return .85+(side===1?8.2:1.8)*Math.exp(-((x-20)**2)/29);}
- for(const side of [1,2]){
-  const sign=side===1?-1:1,positions=[],colors=[];
-  function vertex(row,j){
-   const [x]=row,h=rise(x,side);
-   return [x,[waterHeight-.18,.18,h,h*.85,1.2][j],row[side]+sign*[-.12,.65,side===1?1.95:3.1,7,24][j]];
-  }
-  for(let i=1;i<channel.length;i++)for(let j=0;j<4;j++){
-   const a=vertex(channel[i-1],j),b=vertex(channel[i],j),c=vertex(channel[i],j+1),d=vertex(channel[i-1],j+1);
-   const tint=(j===0?sand:j===1&&side===1&&i>=6&&i<=9?stone:grass).color.clone().multiplyScalar(.9+random()*.12);
-   for(const v of (side===1?[a,b,c,a,c,d]:[a,c,b,a,d,c])){positions.push(...v);colors.push(tint.r,tint.g,tint.b);}
-  }
-  const geo=new T.BufferGeometry();geo.setAttribute('position',new T.Float32BufferAttribute(positions,3));geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));geo.computeVertexNormals();
-  const material=color(0xffffff);material.vertexColors=true;material.side=T.DoubleSide;
-  piece(geo,material,0,0,0);
- }
  // The old cherry leans out from the northern headland. Its low wide crown
  // frames the entrance; the rock behind it hides the bridge on departure.
- function blossom(x,z,y,k,lean){
+ function blossom(x,z,k,lean){
+  const y=terrainHeight(x,z);
+  if(outerDepth(x,z)>0)return;
   const joint=[x+.35*k,y+1.75*k,z+lean*.75*k];
   const crook=[x-.38*k,y+.83*k,z+.4*k*lean];
   limb([x,y-.16,z],crook,.53*k,.4*k);limb(crook,joint,.41*k,.29*k);
@@ -60,14 +47,14 @@ export function buildCreek(gradient){
    }
   }
  }
- blossom(12,bankZ(12,1)-1,.55,1.85,1);
+ blossom(12,bankZ(12,1)-1,1.85,1);
  for(const [x,side,k] of [[20.5,2,.88],[24,1,.78],[34.5,2,1.02],[36.5,1,.85],[40,2,1.22]]){
-  const sign=side===1?-1:1;blossom(x,bankZ(x,side)+sign*2.4,rise(x,side)*(side===1?1:.72),k,-sign);
+  const sign=side===1?-1:1;blossom(x,bankZ(x,side)+sign*2.4,k,-sign);
  }
  for(let i=0;i<105;i++){
   const x=-11+random()*54,side=i%2+1,sign=side===1?-1:1;
-  const z=bankZ(x,side)+sign*(3.4+random()*6),y=rise(x,side)*.85,k=.6+random()*1.35;
-  if(x<9 && side===2 && i%3)continue;
+  const z=bankZ(x,side)+sign*(3.4+random()*6),y=terrainHeight(x,z),k=.6+random()*1.35;
+  if((x<9 && side===2 && i%3)||outerDepth(x,z)>-.25)continue;
   limb([x,y-.2,z],[x+.12,y+1.9*k,z],.17*k,.1*k);
   for(let j=0;j<6;j++){
    const t=j*2.39+i,r=j<4?1:.48;
@@ -76,10 +63,12 @@ export function buildCreek(gradient){
  }
  for(let i=0;i<115;i++){
   const x=-10+random()*23,side=i%2+1,sign=side===1?-1:1,z=bankZ(x,side)+sign*(random()*.85);
+  if(outerDepth(x,z)>1)continue;
   for(let j=0;j<3;j++){const h=.65+random()*.65;piece(lump,gold,x+j*.09,.18+h*.4,z+random()*.2,.044,h*.54,.06).rotation.z=(random()-.5)*.4;}
  }
  for(let i=0;i<65;i++){
   const x=-9+random()*52,side=i%2+1,sign=side===1?-1:1,k=.22+random()*.5;
+  if(outerDepth(x,bankZ(x,side)+sign*.28)>1)continue;
   piece(lump,i%4?stone:moss,x,0,bankZ(x,side)+sign*.28,k*1.35,k*.7,k).rotation.y=i;
  }
  // Arch is hollow geometry; its feet sit beyond the navigable banks.
@@ -103,10 +92,10 @@ export function buildCreek(gradient){
   const h=rise(x,1),k=.6+random()*.85;
   const rock=piece(lump,i%4?stone:moss,x,h*.57,z,k*1.3,h*.43,k);rock.rotation.y=i;
  }
- piece(crown,foliage[0],52,-1.4,2,8,4.2,16);
+
  for(let i=0;i<24;i++){
   const a=i*Math.PI/12,k=5+random()*7;
-  piece(lump,i%2?colorMountainA:colorMountainB,18+Math.cos(a)*55,-2.5,Math.sin(a)*45,10+random()*8,k,9).rotation.y=a;
+  piece(lump,i%2?colorMountainA:colorMountainB,20+Math.cos(a)*75,-2.5,20+Math.sin(a)*65,10+random()*8,k,9).rotation.y=a;
  }
  batchRigidMeshes(group);group.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;}});
  return group;

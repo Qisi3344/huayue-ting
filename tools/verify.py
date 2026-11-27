@@ -10,7 +10,7 @@ OUT.mkdir(exist_ok=True)
 async def main():
     errors=[]
     async with async_playwright() as p:
-        browser=await p.chromium.launch(executable_path=os.path.join(os.environ['LOCALAPPDATA'],'Google','Chrome','Application','chrome.exe'),headless=True,args=['--enable-webgl','--ignore-gpu-blocklist','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
+        browser=await p.chromium.launch(executable_path=os.path.join(os.environ['LOCALAPPDATA'],'Google','Chrome','Application','chrome.exe'),headless=True,args=['--enable-webgl','--ignore-gpu-blocklist','--use-angle='+os.environ.get('HUAYUE_ANGLE','swiftshader'),'--enable-unsafe-swiftshader'])
         page=await browser.new_page(viewport={'width':1440,'height':960},device_scale_factor=1)
         page.on('pageerror',lambda e:errors.append(str(e)))
         page.on('console',lambda m:errors.append(m.text) if m.type=='error' else None)

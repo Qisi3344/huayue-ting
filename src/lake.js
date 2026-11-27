@@ -1,33 +1,27 @@
 import * as THREE from '../vendor/three.module.js';
 
-import {channel,bankZ} from './data.js';
+import {bounds,waterDepth,landings} from './waterways.js';
 
 export const waterHeight = -.13;
 
-// The horizontal intersection of the bank ellipsoids at the water level.
-export function waterline(x, y, z, rx, ry, rz) {
- const scale = Math.sqrt(Math.max(0, 1 - ((waterHeight - y) / ry) ** 2));
- return new THREE.Vector4(x, z, rx * scale, rz * scale);
-}
-
-export function createLake(scene, renderer, banks) {
+export function createLake(scene, renderer) {
  const reflection = new THREE.WebGLRenderTarget(1, 1);
  const mirror = new THREE.OrthographicCamera();
  mirror.layers.set(1);
  const look = new THREE.Vector3();
- // One texel per river cross-section sample, shared by foam and shallows.
- const samples=new Uint8Array(256*4);
- for(let i=0;i<256;i++){
-  const x=channel[0][0]+i/255*(channel.at(-1)[0]-channel[0][0]);
-  samples[i*4]=Math.round((bankZ(x,1)+20)*6);samples[i*4+1]=Math.round((bankZ(x,2)+20)*6);samples[i*4+3]=255;
+ // One cached depth field drives the water, collision and both charts.
+ const size=256,samples=new Uint8Array(size*size),[left,right,top,bottom]=bounds;
+ for(let j=0;j<size;j++)for(let i=0;i<size;i++){
+  const d=waterDepth(left+i/(size-1)*(right-left),top+j/(size-1)*(bottom-top));
+  samples[j*size+i]=Math.round(THREE.MathUtils.clamp((d+4)/16,0,1)*255);
  }
- const riverTexture=new THREE.DataTexture(samples,256,1);
+ const riverTexture=new THREE.DataTexture(samples,size,size,THREE.RedFormat);
  riverTexture.minFilter=riverTexture.magFilter=THREE.LinearFilter;riverTexture.needsUpdate=true;
  const uniforms = {
   riverEdges:{value:riverTexture},
-  limits:{value:new THREE.Vector4(-3,21,-10,10)}, tint: {value: new THREE.Color()}, sky: {value: new THREE.Color()},
-  lightTint: {value: new THREE.Color()}, clock: {value: 0}, banks: {value: banks},
-  creekVisible: {value: 1}, reflected: {value: reflection.texture},
+  limits:{value:new THREE.Vector4(...bounds)}, tint: {value: new THREE.Color()}, sky: {value: new THREE.Color()},
+  lightTint: {value: new THREE.Color()}, clock: {value: 0},
+  reflected: {value: reflection.texture},
   mirrorVP: {value: new THREE.Matrix4()}, reflectionTexel: {value: new THREE.Vector2()}
  };
  const material = new THREE.ShaderMaterial({
@@ -46,8 +40,8 @@ export function createLake(scene, renderer, banks) {
    }`,
   fragmentShader: `
    uniform vec3 tint, sky, lightTint;
-   uniform float clock, creekVisible;
-   uniform vec4 banks[3],limits;
+   uniform float clock;
+   uniform vec4 limits;
    uniform sampler2D reflected,riverEdges;
    uniform vec2 reflectionTexel;
    varying vec3 world;
@@ -59,16 +53,10 @@ export function createLake(scene, renderer, banks) {
     vec4 h = fract(sin(dot(cell,vec2(17.1,79.3))+vec4(0.,17.1,79.3,96.4))*4375.3);
     return mix(mix(h.x,h.y,f.x),mix(h.z,h.w,f.x),f.y);
    }
-   float shore(vec2 p, vec4 b) {
-    return (length((p-b.xy)/b.zw)-1.) * min(b.z,b.w);
-   }
    void main() {
     vec2 p = world.xz;
-    float d = min(shore(p,banks[0]),shore(p,banks[1]));
-    if (creekVisible>.5){
-     vec2 sides=texture2D(riverEdges,vec2(clamp((p.x-limits.x)/(limits.y-limits.x),0.,1.)*(255./256.)+.5/256.,.5)).rg*42.5-20.;
-     d=min(min(d,shore(p,banks[2])),min(p.y-sides.x,sides.y-p.y));
-    }
+    vec2 cell=clamp((p-limits.xz)/(limits.yw-limits.xz),0.,1.)*(255./256.)+.5/256.;
+    float d=texture2D(riverEdges,cell).r*16.-4.;
     float drift = noise(p*vec2(.75,2.6)+vec2(clock*.12,-clock*.18));
     float ripple = noise(p*vec2(1.7,6.2)+vec2(-clock*.19,clock*.23));
     vec2 bend = vec2(drift-.5,ripple-.5);
@@ -103,7 +91,7 @@ export function createLake(scene, renderer, banks) {
  shape.lineTo(-.19,-.055); shape.quadraticCurveTo(.24,-.17,.49,0);
  const fishGeometry = new THREE.ShapeGeometry(shape,8);
  fishGeometry.rotateX(-Math.PI/2);
- const schools = [[2,4.4],[7,-2],[13,2.2],[17,-.35]];
+ const schools = [[2,4.4],[7,-2],[13,2.2],...Object.values(landings).slice(1).map(p=>[p.x-1,p.z+.7])];
  const fish = schools.flatMap(([x,z],school)=>Array.from({length:3},(_,i)=>({
   homeX:x+i*.47,homeZ:z+i*.35,x:x+i*.47,z:z+i*.35,angle:0,phase:i*.87+school*1.4
  })));
@@ -207,8 +195,8 @@ export function createLake(scene, renderer, banks) {
   renderer.setRenderTarget(reflection);renderer.render(scene,mirror);renderer.setRenderTarget(null);
   scene.background=background;renderer.setClearColor(background,alpha);renderer.shadowMap.autoUpdate=shadowsEnabled;
  }
- return {setBounds(bounds){uniforms.limits.value.fromArray(bounds);},tint:uniforms.tint.value,resize,update,capture,resetWake,invalidate,
-  environment(sky,light,creek,invalidate=true){uniforms.sky.value.copy(sky);uniforms.lightTint.value.copy(light);uniforms.creekVisible.value=Number(creek);if(invalidate)lastCapture=-Infinity;},
+ return {tint:uniforms.tint.value,resize,update,capture,resetWake,invalidate,
+  environment(sky,light,invalidate=true){uniforms.sky.value.copy(sky);uniforms.lightTint.value.copy(light);if(invalidate)lastCapture=-Infinity;},
   dispose(){riverTexture.dispose();reflection.dispose();}
  };
 }

@@ -1,34 +1,31 @@
-import {LOCATIONS,channel,bridgeX,bankZ} from './data.js';
-import {mapPosition} from './navigation.js';
+import {bridgeX,bankZ} from './data.js';
+import {chartPoint,worldPoint,waterDepth} from './waterways.js';
 // North is -Z and east is +X. Both extents are square so heading and distance
 // have the same scale on either axis, even on a portrait screen.
 const resolution=384;
 
-function paintBase(bounds,{banks,trees,docks,falls,channel:river}){
- const canvas=document.createElement('canvas');
- canvas.width=canvas.height=resolution;
- const ctx=canvas.getContext('2d');
+// Rasterize once per chart. The same distance field outlines every inlet and islet.
+function paintWater(width,height,fromPixel,paper){
+ const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+ const ctx=canvas.getContext('2d'),pixels=ctx.createImageData(width,height);
+ for(let j=0;j<height;j++)for(let i=0;i<width;i++){
+  const {x,z}=fromPixel(i+.5,j+.5),d=waterDepth(x,z),k=(j*width+i)*4;
+  if(paper && d<-.9)continue;
+  const t=Math.max(0,Math.min(1,d/6)),grain=2*Math.sin(x*1.7+z*.4);
+  const c=d<-.65?[179,188,151]:d<-.15?[213,209,172]:d<.27?[110,148,131]:[173-t*46+grain,204-t*30+grain,181-t*17+grain];
+  pixels.data[k]=c[0];pixels.data[k+1]=c[1];pixels.data[k+2]=c[2];pixels.data[k+3]=255;
+ }
+ ctx.putImageData(pixels,0,0);return canvas;
+}
+function paintBase(bounds,{trees,docks}){
  const scale=resolution/(bounds.xmax-bounds.xmin);
+ const canvas=paintWater(resolution,resolution,(i,j)=>({x:bounds.xmin+i/scale,z:bounds.zmin+j/scale}),false);
+ const ctx=canvas.getContext('2d');
  ctx.setTransform(scale,0,0,scale,-bounds.xmin*scale,-bounds.zmin*scale);
- const water=ctx.createLinearGradient(bounds.xmin,bounds.zmin,bounds.xmax,bounds.zmax);
- water.addColorStop(0,'#9bc8ba');water.addColorStop(1,'#547f82');
- ctx.fillStyle=water;
- ctx.fillRect(bounds.xmin,bounds.zmin,bounds.xmax-bounds.xmin,bounds.zmax-bounds.zmin);
  function oval(x,z,rx,rz,fill){
   ctx.beginPath();ctx.ellipse(x,z,rx,rz,0,0,2*Math.PI);ctx.fillStyle=fill;ctx.fill();
  }
- if(river){
-  for(const side of [1,2]){
-   ctx.beginPath();
-   river.forEach((row,i)=>i?ctx.lineTo(row[0],row[side]):ctx.moveTo(row[0],row[side]));
-   const edge=side===1?bounds.zmin:bounds.zmax;
-   ctx.lineTo(bounds.xmax,edge);ctx.lineTo(bounds.xmin,edge);ctx.closePath();ctx.fillStyle='#b5be93';ctx.fill();
-  }
-  ctx.fillStyle='#8d8070';ctx.fillRect(bridgeX-.6,bankZ(bridgeX,1),1.2,bankZ(bridgeX,2)-bankZ(bridgeX,1));
- }
- for(const [rim,fill] of [[1.65,'#99c2af'],[.65,'#b8d0b1'],[.2,'#e2dcb6'],[0,'#aabb8d']]){
-  for(const bank of banks)oval(bank.x,bank.y,bank.z+rim,bank.w+rim,fill);
- }
+ ctx.fillStyle='#8d8070';ctx.fillRect(bridgeX-.6,bankZ(bridgeX,1),1.2,bankZ(bridgeX,2)-bankZ(bridgeX,1));
  for(const {g,type} of trees){
   const {x,z}=g.position,r=g.scale.x;
   oval(x,z,r*.86,r*.79,type==='flower'?'#cfafa7':'#779978');
@@ -41,7 +38,6 @@ function paintBase(bounds,{banks,trees,docks,falls,channel:river}){
   for(let i=0;i<9;i++)ctx.fillRect(-2.96+.46*i,-.76,.38,1.52);
   ctx.restore();
  }
- if(falls){oval(5.5,-7,1.55,1.25,'#a7b4a3');oval(5.35,-5.8,.43,.76,'#d6e6db');}
  return canvas;
 }
 
@@ -75,37 +71,20 @@ export function createMinimap(base,marker){
   }
  };
 }
+let atlasWater;
 export function drawAtlas(canvas){
  const ctx=canvas.getContext('2d');
  canvas.width=1280;canvas.height=840;
  ctx.scale(12.8,8.4);
- // Broad watercolor washes and a fine ink waterline around the connected basin.
- const lake=new Path2D('M 7 78 C 18 70 11 58 26 55 S 38 49 36 40 Q 32 28 42 18 Q 48 21 43 32 Q 38 46 48 44 C 59 44 54 30 65 22 Q 77 16 72 28 Q 61 33 61 41 Q 62 47 73 43 Q 93 33 90 49 Q 89 58 77 59 Q 66 60 66 70 Q 70 82 59 86 Q 52 82 56 73 Q 61 58 49 59 Q 36 57 30 65 Q 22 80 7 78 Z');
- ctx.lineJoin='round';ctx.strokeStyle='#b5bf9e';ctx.lineWidth=4;ctx.stroke(lake);
- ctx.strokeStyle='#e8dfbc';ctx.lineWidth=2.9;ctx.stroke(lake);
- const water=ctx.createLinearGradient(24,25,79,83);water.addColorStop(0,'#bbd5c4');water.addColorStop(.6,'#8eb9ae');water.addColorStop(1,'#b2cabc');
- ctx.fillStyle=water;ctx.fill(lake);ctx.lineWidth=.22;ctx.strokeStyle='#668e83';ctx.stroke(lake);
- ctx.save();ctx.clip(lake);
- ctx.strokeStyle='#749f93';ctx.lineWidth=.11;
- for(let i=0;i<320;i++){
-  const x=(i*37.13)%100,y=(i*17.51)%100;
-  ctx.beginPath();ctx.moveTo(x,y);ctx.quadraticCurveTo(x+.7,y+.31,x+1.4,y-.06);ctx.stroke();
- }
- ctx.restore();
- // Trace the playable reach using the same transform as the boat marker.
- const origin=LOCATIONS.find(p=>p.creekPier).routeTo;
- const project=(x,z)=>mapPosition(LOCATIONS,origin,{x,z,onBoat:true});
- ctx.beginPath();
- for(const [i,row] of [...channel.map(r=>[r[0],r[1]]),...channel.slice().reverse().map(r=>[r[0],r[2]])].entries()){
-  const p=project(...row);if(i)ctx.lineTo(p.x,p.y);else ctx.moveTo(p.x,p.y);
- }
- ctx.closePath();ctx.fillStyle=water;ctx.fill();ctx.strokeStyle='#668e83';ctx.stroke();
- const ends=[1,2].map(side=>project(bridgeX,bankZ(bridgeX,side)));
+ atlasWater??=paintWater(600,400,(i,j)=>worldPoint(i/6,j/4),true);
+ ctx.drawImage(atlasWater,0,0,100,100);
+ const ends=[1,2].map(side=>chartPoint(bridgeX,bankZ(bridgeX,side)));
  ctx.beginPath();ctx.moveTo(ends[0].x,ends[0].y);ctx.lineTo(ends[1].x,ends[1].y);ctx.strokeStyle='#867962';ctx.lineWidth=.7;ctx.stroke();
- ctx.fillStyle='#d7d4ac';ctx.beginPath();ctx.ellipse(50.8,51.3,3.3,2,-.3,0,2*Math.PI);ctx.fill();ctx.stroke();
+
  for(const [cx,cy,n] of [[13,35,18],[58,19,12],[74,14,9],[40,69,12],[81,68,11]]){
   for(let i=0;i<n;i++){
    const x=cx+Math.sin(i*2.4)*Math.sqrt(i)*1.7,y=cy+Math.cos(i*2.4)*Math.sqrt(i)*1.3;
+   const w=worldPoint(x,y);if(waterDepth(w.x,w.z)>-2)continue;
    ctx.fillStyle=i%2?'#95a788':'#a6b495';ctx.beginPath();ctx.moveTo(x,y-1.9);ctx.lineTo(x+.6,y-.55);ctx.lineTo(x+.36,y-.61);ctx.lineTo(x+.94,y+.4);ctx.lineTo(x-.91,y+.4);ctx.lineTo(x-.38,y-.65);ctx.lineTo(x-.59,y-.56);ctx.closePath();ctx.fill();
    ctx.fillRect(x-.09,y+.4,.18,.36);
   }

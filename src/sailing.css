@@ -61,7 +61,7 @@
 .bag-button i:before{content:'';position:absolute;top:-7px;left:3px;width:7px;height:6px;border:2px solid;border-radius:5px}
 .bag-button i:after{content:'';position:absolute;left:2px;right:2px;bottom:2px;height:4px;border:1px solid;border-radius:2px}
 .dock-action{border-radius:16px;padding:7px 12px;font-size:12px}
-.idle-hud :is(.top-actions,#dial,.side-nav,#minimap){opacity:.25}
+.idle-hud :is(.top-actions,#dial,.side-nav){opacity:.25}
 .idle-hud :is(.side-nav,#minimap,#dial):focus-within{opacity:1}
 #minimap{transition:opacity .55s}
 #bagTabs{display:flex;gap:5px;margin:0 38px 15px 0;flex-wrap:wrap}
@@ -110,3 +110,5 @@
 @media(max-height:480px){.side-nav{top:54px;gap:3px}.side-nav :is(.quick-icon,.bag-button){width:36px;height:36px;min-width:36px}}
 
 #world[data-creek-view="true"]~.vignette{opacity:.13}
+
+@media(max-height:539px){#game{min-height:0}}

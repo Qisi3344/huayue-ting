@@ -1,17 +1,18 @@
 import assert from 'node:assert/strict';
 import * as THREE from '../vendor/three.module.js';
-import {createLake, waterline} from '../src/lake.js';
+import {createLake} from '../src/lake.js';
 
 const scene = new THREE.Scene();
-const bank = waterline(0, -.13, 0, 3, 1, 2);
-assert.deepEqual(bank.toArray(), [0, 0, 3, 2]);
 let passes=0, reflectionSize;
 const renderer={
  shadowMap:{autoUpdate:true}, getClearAlpha:()=>1, setClearColor(){},
  setRenderTarget(target){if(target)reflectionSize=[target.width,target.height];},
  render(){passes++;}
 };
-const lake = createLake(scene, renderer, [bank, bank, bank]);
+const lake = createLake(scene, renderer);
+const depthMap=scene.children[0].material.uniforms.riverEdges.value.image;
+assert.equal(depthMap.width,256);
+assert.ok(depthMap.data.some(d=>d===0) && depthMap.data.some(d=>d>150),'shore and open water both reach the shader');
 const wakes = scene.children.filter(object => object.renderOrder === 1);
 const fish = scene.children.find(object => object.isInstancedMesh);
 const nav = {onBoat:true, sailing:true, speed:2, x:1.8, z:4.4, vx:2, vz:0, heading:Math.PI/2};
